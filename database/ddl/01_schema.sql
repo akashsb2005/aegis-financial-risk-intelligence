@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Psr8j1CEmksh5mmm91xiTdbdskg3l4r8ZQWiqq9WgW2tGnw40Sk6M8ThMrUWL7p
+\restrict RKHRWhK2o3ohA5emlU0bIzbqLQjk4ll20uJ9PMhHiGaje25drEJS28HccuUdpfc
 
 -- Dumped from database version 18.4
 -- Dumped by pg_dump version 18.4
@@ -120,11 +120,43 @@ CREATE FUNCTION public.log_risk_assessment() RETURNS trigger
     AS $$
 BEGIN
     INSERT INTO public.risk_assessment_audit
-        (risk_assessment_id, company_id, risk_score)
+        (
+            risk_assessment_id,
+            company_id,
+            risk_score,
+            action_type,
+            risk_level,
+            model_version,
+            explanation,
+            assessed_by
+        )
     VALUES
-        (NEW.risk_assessment_id, NEW.company_id, NEW.risk_score);
+        (
+            NEW.risk_assessment_id,
+            NEW.company_id,
+            NEW.risk_score,
+            'INSERT',
+            NEW.risk_level,
+            NEW.model_version,
+            NEW.explanation,
+            NEW.assessed_by
+        );
 
     RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: prevent_risk_assessment_modification(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.prevent_risk_assessment_modification() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RAISE EXCEPTION
+        'Risk assessments are append-only. UPDATE and DELETE operations are not allowed. Create a new assessment instead.';
 END;
 $$;
 
@@ -316,10 +348,18 @@ ALTER SEQUENCE public.password_reset_tokens_token_id_seq OWNED BY public.passwor
 
 CREATE TABLE public.risk_assessment_audit (
     audit_id integer NOT NULL,
-    risk_assessment_id integer,
-    company_id integer,
-    risk_score numeric,
-    logged_at timestamp without time zone DEFAULT now()
+    risk_assessment_id integer NOT NULL,
+    company_id integer NOT NULL,
+    risk_score numeric NOT NULL,
+    logged_at timestamp without time zone DEFAULT now() NOT NULL,
+    action_type character varying(20) NOT NULL,
+    risk_level character varying(20) NOT NULL,
+    model_version character varying(50),
+    explanation text,
+    assessed_by integer,
+    CONSTRAINT chk_audit_action_type CHECK (((action_type)::text = 'INSERT'::text)),
+    CONSTRAINT chk_audit_risk_level CHECK (((risk_level)::text = ANY ((ARRAY['LOW'::character varying, 'MEDIUM'::character varying, 'HIGH'::character varying, 'CRITICAL'::character varying])::text[]))),
+    CONSTRAINT chk_audit_risk_score CHECK (((risk_score >= (0)::numeric) AND (risk_score <= (100)::numeric)))
 );
 
 
@@ -632,6 +672,13 @@ CREATE TRIGGER trg_log_risk_assessment AFTER INSERT ON public.risk_assessment FO
 
 
 --
+-- Name: risk_assessment trg_prevent_risk_assessment_modification; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_prevent_risk_assessment_modification BEFORE DELETE OR UPDATE ON public.risk_assessment FOR EACH ROW EXECUTE FUNCTION public.prevent_risk_assessment_modification();
+
+
+--
 -- Name: financial_records fk_financial_company; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -683,4 +730,4 @@ ALTER TABLE ONLY public.users
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Psr8j1CEmksh5mmm91xiTdbdskg3l4r8ZQWiqq9WgW2tGnw40Sk6M8ThMrUWL7p
+\unrestrict RKHRWhK2o3ohA5emlU0bIzbqLQjk4ll20uJ9PMhHiGaje25drEJS28HccuUdpfc
