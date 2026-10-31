@@ -66,7 +66,7 @@ The authoritative schema is `database/ddl/01_schema.sql`. It defines the databas
 
 ### 5.2 Database verification
 
-The read-only catalog and data verification script is `database/verification/01_schema_verification.sql`. It checks relation presence, columns, constraints, indexes, triggers, views, routines, extensions, and row counts. Save actual execution output or screenshots separately as submission evidence.
+The read-only catalog and data verification script is `database/verification/01_schema_verification.sql`. It checks relation presence, columns, constraints, indexes, triggers, views, routines, extensions, and row counts. `database/seeds/01_demo_data.sql` supplies repeatable synthetic demo records. GitHub Actions runs the schema, seed, analytical queries, catalog verification, and behavioral tests against a disposable PostgreSQL 18 service. This is automated execution evidence; it is distinct from screenshots of a local database client.
 
 ### 5.3 Historical risk and audit behavior
 
@@ -74,9 +74,9 @@ Risk assessments are intended to be append-only through the modification-prevent
 
 ## 6. NoSQL / Vector Database Commands
 
-**Current status:** The tracked schema does not install pgvector, create a vector column, define a vector index, or include a NoSQL/vector database integration. Therefore, no vector retrieval command can honestly be reported as executed or implemented.
+**Current status:** The core schema does not install pgvector. A separate optional migration and query reference is now tracked at `database/vector/01_pgvector_evidence.sql`. It contains extension creation, an evidence table with a 384-dimensional vector column, an HNSW cosine index, and similarity-search examples. It is intentionally excluded from core CI because pgvector is not installed in the standard PostgreSQL service image. The migration is not claimed as executed; a compatible embedding model and pgvector-enabled server are prerequisites.
 
-If pgvector is selected and installed in the target PostgreSQL environment, a future implementation could use commands of the following form. These are illustrative only and are not part of the current schema:
+The optional migration contains commands of the following form:
 
 ```sql
 -- Illustrative future commands only; requires pgvector installation.
@@ -137,7 +137,7 @@ The actual repository tree currently contains the PostgreSQL DDL, SQL query file
 6. Application login/dashboard screenshots, only if the application is implemented.
 7. End-to-end demo screenshots, only if the complete workflow is running.
 
-No screenshot is embedded in this report because no live database or application screenshot was available from the connected repository. Add authentic screenshots captured from the actual running system; do not use mockups as proof of execution.
+No local database-client or end-to-end application screenshot is embedded because no such image was available from the connected repository. The automated PostgreSQL 18 CI run is linked from the README and provides reproducible execution evidence. A local-client screenshot or application demo image must not be fabricated; the web application is not implemented in the tracked repository.
 
 ## 9. Evaluation Rubric — Completion Status
 
@@ -148,21 +148,21 @@ No screenshot is embedded in this report because no live database or application
 | Keys and constraints | PostgreSQL schema dump | Implemented in tracked DDL; runtime verification pending |
 | Functional dependencies | Functional-dependency document | Documented |
 | Normalization | Normalization document | Documented analysis |
-| SQL query coverage | Three SQL query files | Implemented as scripts; execution evidence pending |
-| Views, functions, procedure, triggers | Schema dump and relational schema document | Implemented in tracked DDL; runtime verification pending |
+| SQL query coverage | Three SQL query files; synthetic seed dataset; PostgreSQL 18 CI | Implemented and executed in CI |
+| Views, functions, procedure, triggers | Schema dump; behavioral tests; PostgreSQL 18 CI | Implemented and behavior-tested in CI |
 | Transactions/concurrency demo | No dedicated demonstration evidence currently tracked | Pending |
-| NoSQL/vector database | Design discussion only | Not implemented |
+| NoSQL/vector database | Optional pgvector migration and similarity-query reference | Documented; requires pgvector-enabled runtime and real embedding model |
 | FastAPI backend | API design document only | Not implemented in tracked source |
 | Next.js frontend | Proposed project tree only | Not implemented in tracked source |
 | ML model and evaluation | ML design document only | Not implemented in tracked source |
-| Application screenshots/demo | No authentic runtime evidence available | Pending |
+| Local database-client screenshots / web application demo | No authentic local-client or application screenshots available; CI logs linked | Local screenshots pending; no web application in tracked source |
 | GitHub source and documentation | Repository and merged PRs | Available |
 
 ## 10. Conclusion
 
 The current AEGIS repository provides a PostgreSQL-centered DBMS foundation with a normalized relational design, integrity constraints, historical risk assessment storage, audit-trigger logic, and a structured SQL query portfolio. Its documentation now includes the ER model, relational schema, data dictionary, functional dependencies, normalization analysis, system architecture, API design, and ML design.
 
-The remaining work required to claim a complete end-to-end AI application is implementation and runtime verification of the API, frontend, vector retrieval, ML pipeline, integration tests, and authentic demo evidence. These must not be represented as completed until they exist and have been tested.
+The relational DBMS implementation is now automatically exercised in PostgreSQL 18 CI using a repeatable synthetic dataset, catalog checks, analytical SQL, and behavioral integration tests. The optional pgvector migration is documented but not executed. A complete end-to-end AI application still requires the API, frontend, production vector retrieval, ML pipeline, and authentic application demo evidence; these are not claimed as completed.
 
 ## Appendix A — Repository links
 
