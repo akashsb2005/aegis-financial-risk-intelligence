@@ -10,12 +10,10 @@ import {
   logout,
   subscribeToSession,
 } from "@/lib/auth";
+import { CompaniesApiError, getCompanies } from "@/lib/companies";
+import type { Company } from "@/lib/companies";
 
-const sections = [
-  {
-    title: "Company monitoring",
-    description: "Company records and monitoring tools will appear here.",
-  },
+const placeholderSections = [
   {
     title: "Risk assessments",
     description: "Assessment workflows and history will appear here.",
@@ -30,11 +28,52 @@ export default function DashboardPage() {
   const router = useRouter();
   const hasSession = useSyncExternalStore(subscribeToSession, hasActiveSession, () => false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
+  const [companiesError, setCompaniesError] = useState("");
 
   useEffect(() => {
     if (!hasSession) {
       router.replace("/");
+      return;
     }
+
+    let isCurrent = true;
+    async function loadCompanies() {
+      const token = getSessionToken();
+      if (!token) {
+        router.replace("/");
+        return;
+      }
+
+      try {
+        const result = await getCompanies(token);
+        if (isCurrent) {
+          setCompanies(result);
+        }
+      } catch (error) {
+        if (!isCurrent) {
+          return;
+        }
+        if (error instanceof CompaniesApiError && error.status === 401) {
+          clearSessionToken();
+          router.replace("/");
+          return;
+        }
+        setCompaniesError(
+          error instanceof Error ? error.message : "Could not load companies. Please try again.",
+        );
+      } finally {
+        if (isCurrent) {
+          setIsLoadingCompanies(false);
+        }
+      }
+    }
+
+    void loadCompanies();
+    return () => {
+      isCurrent = false;
+    };
   }, [hasSession, router]);
 
   async function handleLogout() {
@@ -75,7 +114,7 @@ export default function DashboardPage() {
                 Your workspace
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                Your AEGIS session is active. Workspace data is not connected yet.
+                Your AEGIS session is active. Company information is loaded from your workspace.
               </p>
             </header>
             <button
@@ -88,8 +127,54 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          <section aria-label="Dashboard sections" className="grid gap-4 lg:grid-cols-3">
-            {sections.map((section) => (
+          <section aria-labelledby="companies-heading" className="mb-8">
+            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-xl font-semibold tracking-tight text-[#14213d]" id="companies-heading">
+                Company monitoring
+              </h2>
+              {!isLoadingCompanies && !companiesError && companies.length > 0 && (
+                <p className="text-sm text-slate-500" aria-live="polite">
+                  {companies.length} {companies.length === 1 ? "company" : "companies"}
+                </p>
+              )}
+            </div>
+
+            {isLoadingCompanies ? (
+              <div
+                aria-live="polite"
+                className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm"
+                role="status"
+              >
+                Loading companies...
+              </div>
+            ) : companiesError ? (
+              <div
+                aria-live="assertive"
+                className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800"
+                role="alert"
+              >
+                {companiesError}
+              </div>
+            ) : companies.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 px-5 py-8 text-center">
+                <p className="text-sm font-medium text-slate-700">No companies found.</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Companies will appear here when they are available in your workspace.
+                </p>
+              </div>
+            ) : (
+              <ul className="grid list-none gap-4 p-0 sm:grid-cols-2 xl:grid-cols-3">
+                {companies.map((company) => (
+                  <li key={company.company_id}>
+                    <CompanyCard company={company} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section aria-label="Dashboard sections" className="grid gap-4 lg:grid-cols-2">
+            {placeholderSections.map((section) => (
               <article
                 className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40"
                 key={section.title}
@@ -105,15 +190,36 @@ export default function DashboardPage() {
               </article>
             ))}
           </section>
-
-          <footer className="mt-8 rounded-xl border border-dashed border-slate-300 bg-white/70 px-5 py-6 text-center">
-            <p className="text-sm font-medium text-slate-700">No workspace data is loaded.</p>
-            <p className="mt-1 text-xs leading-5 text-slate-500">
-              This placeholder does not include sample company or risk information.
-            </p>
-          </footer>
         </div>
       </div>
     </div>
+  );
+}
+
+function CompanyCard({ company }: { company: Company }) {
+  const details = [
+    { label: "Industry", value: company.industry },
+    { label: "Country", value: company.country },
+    {
+      label: "Employees",
+      value: company.employee_count === null ? null : company.employee_count.toLocaleString(),
+    },
+    { label: "Annual revenue", value: company.annual_revenue },
+  ];
+
+  return (
+    <article className="h-full rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40">
+      <h3 className="text-base font-semibold text-[#14213d]">{company.company_name}</h3>
+      <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
+        {details.map((detail) => (
+          <div key={detail.label}>
+            <dt className="text-xs font-medium text-slate-400">{detail.label}</dt>
+            <dd className="mt-1 break-words text-sm text-slate-700">
+              {detail.value ?? "Not provided"}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </article>
   );
 }
