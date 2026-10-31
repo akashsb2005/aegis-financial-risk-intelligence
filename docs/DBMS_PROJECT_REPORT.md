@@ -1,0 +1,175 @@
+# AEGIS — AI-Powered Financial Risk & Event Intelligence Platform
+## DBMS Project Report
+
+> **Submission evidence note:** This report is prepared from the tracked repository and project details available at the time of writing. Runtime screenshots, live database execution output, application demo evidence, and any unverified features must be added only after they are actually captured. Do not submit placeholders as completed evidence.
+
+## 1. Project Title
+
+**AEGIS — AI-Powered Financial Risk & Event Intelligence Platform**
+
+## 2. Student Details
+
+| Student name | SRN | Responsibility |
+|---|---|---|
+| Akash Shivanand Bagoji | PES1UG24AM339 | Database design, PostgreSQL implementation, SQL portfolio, database documentation, and data-layer design |
+| Dhanraj Rathod | PES1UG24AM359 | Backend/API, frontend, application integration, and deployment responsibility |
+
+The responsibility split is recorded in `docs/TEAM_CONTRIBUTION.md`. Actual completed contributions should be evidenced by commits, pull requests, tests, or demonstrations.
+
+## 3. Abstract
+
+AEGIS is a financial risk intelligence platform designed to organize company information, historical financial records, user access data, and time-based risk assessments in a relational database. The database preserves historical risk results rather than replacing earlier assessments. Database constraints support data integrity, while stored routines, views, and triggers provide reusable operations and audit behavior.
+
+The current repository implementation focuses on PostgreSQL. It contains eight core relations: companies, financial_records, roles, users, user_sessions, password_reset_tokens, risk_assessment, and risk_assessment_audit. A SQL query portfolio demonstrates filtering, sorting, joins, aggregation, subqueries, common table expressions, and window functions. The database design is documented through ER, relational-schema, data-dictionary, functional-dependency, and normalization documents.
+
+The broader project vision includes an API layer, web dashboard, machine-learning risk signals, and evidence retrieval. Those components are design targets and are not represented as completed source code in the current tracked repository unless separately implemented and evidenced.
+
+## 4. Technology Stack
+
+### 4.1 Implemented and tracked
+
+| Technology | Purpose | Status |
+|---|---|---|
+| PostgreSQL 18.x | Primary relational database | Schema dump tracked |
+| PL/pgSQL | Stored functions, procedure, and trigger logic | Included in schema dump |
+| pgcrypto | Cryptographic database extension used by schema | Extension declaration included |
+| SQL | DDL and analytical query portfolio | Tracked |
+
+### 4.2 Proposed application/integration technologies
+
+| Technology | Intended purpose | Repository evidence |
+|---|---|---|
+| FastAPI / Python | REST API and service layer | Design only; backend source not present in current tracked tree |
+| Next.js / React / TypeScript | User-facing dashboard | Design only; frontend source not present in current tracked tree |
+| pgvector | Semantic vector retrieval | Not installed or defined in tracked DDL |
+| ML model pipeline | Financial risk signal generation | Design only; no trained model or evaluation results tracked |
+
+## 5. SQL — Database Commands
+
+The authoritative schema is `database/ddl/01_schema.sql`. It defines the database objects. The following command categories are represented in the schema and query portfolio:
+
+1. **DDL:** CREATE TABLE, CREATE SEQUENCE, ALTER TABLE, CREATE INDEX, CREATE VIEW, CREATE FUNCTION, CREATE PROCEDURE, CREATE TRIGGER.
+2. **DML examples:** SELECT queries are provided in the query portfolio. Live INSERT/UPDATE/DELETE demonstrations must use a test database and respect append-only risk history.
+3. **Constraints:** primary keys, foreign keys, UNIQUE constraints, CHECK constraints, NOT NULL requirements, and default values.
+4. **Joins and aggregation:** INNER JOIN, LEFT JOIN, COUNT, SUM, AVG, MIN, MAX, GROUP BY, HAVING.
+5. **Subqueries and CTEs:** scalar and correlated subqueries, IN, EXISTS, NOT EXISTS, and WITH queries.
+6. **Window functions:** ROW_NUMBER, RANK, DENSE_RANK, LAG, LEAD, and running averages.
+7. **Programmability:** stored functions, procedure, views, and triggers.
+
+### 5.1 Query files
+
+| File | Topics |
+|---|---|
+| `database/queries/01_basic_queries.sql` | Basic retrieval, filtering, sorting, NULL handling |
+| `database/queries/02_joins_and_aggregations.sql` | Joins, aggregate functions, grouping, HAVING |
+| `database/queries/03_subqueries_ctes_window_functions.sql` | Subqueries, CTEs, window functions |
+
+### 5.2 Database verification
+
+The read-only catalog and data verification script is `database/verification/01_schema_verification.sql`. It checks relation presence, columns, constraints, indexes, triggers, views, routines, extensions, and row counts. Save actual execution output or screenshots separately as submission evidence.
+
+### 5.3 Historical risk and audit behavior
+
+Risk assessments are intended to be append-only through the modification-prevention trigger in the schema. An AFTER INSERT trigger copies assessment details into `risk_assessment_audit`. The current audit relation does not declare foreign keys for its copied source identifiers; this is documented as a trigger-maintained logical association.
+
+## 6. NoSQL / Vector Database Commands
+
+**Current status:** The tracked schema does not install pgvector, create a vector column, define a vector index, or include a NoSQL/vector database integration. Therefore, no vector retrieval command can honestly be reported as executed or implemented.
+
+If pgvector is selected and installed in the target PostgreSQL environment, a future implementation could use commands of the following form. These are illustrative only and are not part of the current schema:
+
+```sql
+-- Illustrative future commands only; requires pgvector installation.
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Example table; choose embedding dimension to match the selected model.
+CREATE TABLE evidence_embeddings (
+    evidence_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    source_uri TEXT NOT NULL,
+    content TEXT NOT NULL,
+    embedding vector(1536) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Example approximate-nearest-neighbour index.
+CREATE INDEX evidence_embeddings_cosine_idx
+ON evidence_embeddings
+USING hnsw (embedding vector_cosine_ops);
+
+-- Example similarity search; replace the vector with a real model output.
+-- SELECT evidence_id, source_uri, content
+-- FROM evidence_embeddings
+-- ORDER BY embedding <=> '[...]'::vector
+-- LIMIT 5;
+```
+
+Do not present these illustrative commands as completed work. A real implementation must specify the embedding model, dimension, source provenance, update strategy, index choice, and retrieval evaluation.
+
+## 7. Next.js — Project Tree Structure
+
+The current tracked repository does not contain a Next.js application. The following is a proposed target structure, not the present repository tree:
+
+```text
+frontend/
+├── app/
+│   ├── login/
+│   ├── dashboard/
+│   ├── companies/
+│   └── risk-assessments/
+├── components/
+├── lib/
+├── services/
+├── types/
+└── package.json
+```
+
+The actual repository tree currently contains the PostgreSQL DDL, SQL query files, README, and documentation under `docs/`. See the root README for the verified file inventory.
+
+## 8. Sample Screenshots of Application Code and Demo
+
+**Evidence to attach before submission:**
+
+1. PostgreSQL schema/tables visible in the database client.
+2. ER diagram.
+3. Successful execution of representative JOIN and aggregate queries.
+4. Successful execution of CTE and window-function queries.
+5. Trigger/audit behavior demonstrated in a test database.
+6. Application login/dashboard screenshots, only if the application is implemented.
+7. End-to-end demo screenshots, only if the complete workflow is running.
+
+No screenshot is embedded in this report because no live database or application screenshot was available from the connected repository. Add authentic screenshots captured from the actual running system; do not use mockups as proof of execution.
+
+## 9. Evaluation Rubric — Completion Status
+
+| Evaluation area | Current evidence | Status |
+|---|---|---|
+| Project title, scope, abstract | This report and project requirements | Documented |
+| Relational schema and ER model | DDL, ER design, relational schema, data dictionary | Documented in repository |
+| Keys and constraints | PostgreSQL schema dump | Implemented in tracked DDL; runtime verification pending |
+| Functional dependencies | Functional-dependency document | Documented |
+| Normalization | Normalization document | Documented analysis |
+| SQL query coverage | Three SQL query files | Implemented as scripts; execution evidence pending |
+| Views, functions, procedure, triggers | Schema dump and relational schema document | Implemented in tracked DDL; runtime verification pending |
+| Transactions/concurrency demo | No dedicated demonstration evidence currently tracked | Pending |
+| NoSQL/vector database | Design discussion only | Not implemented |
+| FastAPI backend | API design document only | Not implemented in tracked source |
+| Next.js frontend | Proposed project tree only | Not implemented in tracked source |
+| ML model and evaluation | ML design document only | Not implemented in tracked source |
+| Application screenshots/demo | No authentic runtime evidence available | Pending |
+| GitHub source and documentation | Repository and merged PRs | Available |
+
+## 10. Conclusion
+
+The current AEGIS repository provides a PostgreSQL-centered DBMS foundation with a normalized relational design, integrity constraints, historical risk assessment storage, audit-trigger logic, and a structured SQL query portfolio. Its documentation now includes the ER model, relational schema, data dictionary, functional dependencies, normalization analysis, system architecture, API design, and ML design.
+
+The remaining work required to claim a complete end-to-end AI application is implementation and runtime verification of the API, frontend, vector retrieval, ML pipeline, integration tests, and authentic demo evidence. These must not be represented as completed until they exist and have been tested.
+
+## Appendix A — Repository links
+
+- Repository: https://github.com/akashsb2005/aegis-financial-risk-intelligence
+- Database schema: `database/ddl/01_schema.sql`
+- SQL query portfolio: `database/queries/`
+- Database design: `docs/database/`
+- API design: `docs/api/API_DESIGN.md`
+- ML design: `docs/ml/ML_DESIGN.md`
+- Team contributions: `docs/TEAM_CONTRIBUTION.md`
