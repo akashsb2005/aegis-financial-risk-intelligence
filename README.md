@@ -16,6 +16,8 @@ AEGIS is a database-centric financial risk intelligence project. Its current, tr
 | `database/verification/01_schema_verification.sql` | Read-only schema/catalog verification |
 | `database/verification/02_behavioral_integration_tests.sql` | Trigger, append-only, and CHECK-constraint behavior tests |
 | `database/verification/03_transaction_demo.sql` | COMMIT, SAVEPOINT rollback, and full ROLLBACK demonstrations |
+| `database/verification/04_final_structure_assertions.sql` | Fail-fast assertions for required tables, constraints, triggers, view, routines, and index |
+| `database/verification/05_concurrency_demo.sh` | Two-session row-locking, SELECT FOR UPDATE, and REPEATABLE READ demonstration |
 | `database/vector/01_pgvector_evidence.sql` | Optional pgvector evidence-retrieval migration and sample queries |
 | `docs/PROJECT_REQUIREMENTS.md` | Project scope and requirements |
 | `docs/database/DATABASE_DESIGN.md` | Database design overview |
@@ -56,7 +58,7 @@ The query files are examples. Run `database/seeds/01_demo_data.sql` first to loa
 
 ## Verification boundary
 
-GitHub Actions provisions a disposable PostgreSQL 18 instance, applies the schema, loads the synthetic seed data, executes the analytical query portfolio, runs read-only catalog verification, and executes behavioral integration tests. This is genuine automated database execution evidence; it is not a screenshot of a local database client or proof of an end-to-end web application. See the [PostgreSQL validation workflow](.github/workflows/postgres-validation.yml) and [workflow runs](https://github.com/akashsb2005/aegis-financial-risk-intelligence/actions).
+GitHub Actions provisions a disposable PostgreSQL 18 instance, applies the schema, loads the synthetic seed data, executes the analytical query portfolio, runs read-only catalog verification, and executes behavioral integration tests, transaction demonstrations, structural assertions, and a two-session concurrency/isolation demonstration. This is genuine automated database execution evidence; it is not a screenshot of a local database client or proof of an end-to-end web application. See the [PostgreSQL validation workflow](.github/workflows/postgres-validation.yml) and [workflow runs](https://github.com/akashsb2005/aegis-financial-risk-intelligence/actions).
 
 ## Team
 
