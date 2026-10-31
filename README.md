@@ -2,12 +2,14 @@
 
 AEGIS is a database-centric financial risk intelligence project. Its current, tracked implementation is built around PostgreSQL and models companies, financial records, users and roles, sessions, password-reset tokens, risk assessments, and audit snapshots.
 
-> **Implementation-status note:** The repository currently contains the PostgreSQL schema, SQL query portfolio, and database design documentation. A FastAPI service, Next.js application, pgvector deployment, live news/event ingestion, and a trained ML model are not included in the tracked source tree at this stage. They are documented as proposed integration layers, not as completed features.
+> **Implementation-status note:** The repository includes a FastAPI service and a Next.js frontend shell alongside the PostgreSQL schema, SQL query portfolio, and database design documentation. The frontend login and dashboard remain placeholders without authentication or API integration. pgvector deployment, live news/event ingestion, and a trained ML model are not included as completed features.
 
 ## Repository contents
 
 | Path | Purpose |
 |---|---|
+| `frontend/` | Next.js App Router shell; see [frontend setup](frontend/README.md) |
+| `backend/` | FastAPI application, versioned routes, schemas, and service/repository layers |
 | `database/ddl/01_schema.sql` | PostgreSQL schema dump: extensions, tables, constraints, sequences, routines, and triggers |
 | `database/queries/01_basic_queries.sql` | Filtering, sorting, NULL handling, and basic aggregation |
 | `database/queries/02_joins_and_aggregations.sql` | Joins, grouping, aggregate functions, and HAVING |
