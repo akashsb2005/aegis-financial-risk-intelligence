@@ -9,7 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.company import CompanyResponse
+from app.schemas.financial_record import FinancialRecordResponse
 from app.services.company import CompanyNotFoundError, CompanyService
+from app.services.financial_record import FinancialRecordService
 
 router = APIRouter()
 
@@ -61,3 +63,28 @@ def get_company(
             },
         )
     return CompanyResponse.model_validate(company)
+
+
+@router.get(
+    "/companies/{company_id}/financial-records",
+    response_model=list[FinancialRecordResponse],
+    responses={404: {"description": "Company not found"}},
+    tags=["financial-records"],
+)
+def list_company_financial_records(
+    company_id: Annotated[int, Path(gt=0)],
+    db: Session = Depends(get_db),
+) -> list[dict[str, Any]] | JSONResponse:
+    """List financial records for an existing company."""
+    try:
+        return FinancialRecordService(db).list_for_company(company_id)
+    except CompanyNotFoundError:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "COMPANY_NOT_FOUND",
+                    "message": f"Company with ID {company_id} was not found.",
+                }
+            },
+        )
