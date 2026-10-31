@@ -58,17 +58,12 @@ SELECT revenue FROM public.financial_records
 WHERE company_id=:company_id AND fiscal_year=2025;
 \echo REPEATABLE_READ_SNAPSHOT_READY
 SELECT pg_sleep(4);
-DO $$
-DECLARE original_revenue numeric; visible_revenue numeric;
-BEGIN
- SELECT revenue INTO original_revenue FROM aegis_snapshot;
- SELECT revenue INTO visible_revenue FROM public.financial_records
- WHERE company_id=:company_id AND fiscal_year=2025;
- IF visible_revenue <> original_revenue THEN
-  RAISE EXCEPTION 'REPEATABLE READ snapshot changed: original %, visible %',original_revenue,visible_revenue;
- END IF;
-END;
-$$;
+SELECT 1 / CASE WHEN
+  (SELECT revenue FROM aegis_snapshot) =
+  (SELECT fr.revenue FROM public.financial_records fr
+   JOIN public.companies co USING (company_id)
+   WHERE co.registration_number = 'AEGIS-CONCURRENCY-CI' AND fiscal_year = 2025)
+THEN 1 ELSE 0 END;
 COMMIT;
 SQL
 SNAPSHOT_PID=$!
@@ -86,15 +81,10 @@ wait "$SNAPSHOT_PID" || { cat "$SNAPSHOT_LOG"; exit 1; }
 unset SNAPSHOT_PID; rm -f "$SNAPSHOT_LOG"
 echo 'PASS: REPEATABLE READ retained its original snapshot during a concurrent commit.'
 psql -X -v ON_ERROR_STOP=1 -v company_id="$COMPANY_ID" <<'SQL'
-DO $$
-DECLARE final_revenue numeric;
-BEGIN
- SELECT revenue INTO final_revenue FROM public.financial_records
- WHERE company_id=:company_id AND fiscal_year=2025;
- IF final_revenue <> 101500.00 THEN
-  RAISE EXCEPTION 'Unexpected final revenue after concurrent updates: %',final_revenue;
- END IF;
-END;
-$$;
+SELECT 1 / CASE WHEN
+  (SELECT revenue FROM public.financial_records fr
+   JOIN public.companies co USING (company_id)
+   WHERE co.registration_number = 'AEGIS-CONCURRENCY-CI' AND fiscal_year = 2025) = 101500.00
+THEN 1 ELSE 0 END;
 \echo 'AEGIS concurrency checks passed: row locks, SELECT FOR UPDATE, REPEATABLE READ.'
 SQL
