@@ -137,7 +137,7 @@ The actual repository tree currently contains the PostgreSQL DDL, SQL query file
 6. Application login/dashboard screenshots, only if the application is implemented.
 7. End-to-end demo screenshots, only if the complete workflow is running.
 
-No local database-client or end-to-end application screenshot is embedded because no such image was available from the connected repository. The automated PostgreSQL 18 CI run is linked from the README and provides reproducible execution evidence. A local-client screenshot or application demo image must not be fabricated; the web application is not implemented in the tracked repository.
+No local database-client or end-to-end application screenshot is embedded because no such image was available from the connected repository. The automated PostgreSQL 18 CI run is linked from the README and provides reproducible execution evidence, including transaction behavior. A separate simultaneous-session concurrency/isolation demonstration is not yet included. A local-client screenshot or application demo image must not be fabricated; the web application is not implemented in the tracked repository.
 
 ## 9. Evaluation Rubric — Completion Status
 
@@ -150,7 +150,7 @@ No local database-client or end-to-end application screenshot is embedded becaus
 | Normalization | Normalization document | Documented analysis |
 | SQL query coverage | Three SQL query files; synthetic seed dataset; PostgreSQL 18 CI | Implemented and executed in CI |
 | Views, functions, procedure, triggers | Schema dump; behavioral tests; PostgreSQL 18 CI | Implemented and behavior-tested in CI |
-| Transactions/concurrency demo | No dedicated demonstration evidence currently tracked | Pending |
+| Transactions | `database/verification/03_transaction_demo.sql`; PostgreSQL 18 CI | COMMIT, SAVEPOINT rollback, and full ROLLBACK are executed and asserted in CI |
 | NoSQL/vector database | Optional pgvector migration and similarity-query reference | Documented; requires pgvector-enabled runtime and real embedding model |
 | FastAPI backend | API design document only | Not implemented in tracked source |
 | Next.js frontend | Proposed project tree only | Not implemented in tracked source |
