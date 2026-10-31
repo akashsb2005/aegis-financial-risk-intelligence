@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     api_v1_prefix: str = "/api/v1"
     database_url: str | None = None
+    environment: str = "production"
+    auth_expose_reset_token: bool = False
 
 
 @lru_cache
