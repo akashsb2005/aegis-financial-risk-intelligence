@@ -137,7 +137,7 @@ The actual repository tree currently contains the PostgreSQL DDL, SQL query file
 6. Application login/dashboard screenshots, only if the application is implemented.
 7. End-to-end demo screenshots, only if the complete workflow is running.
 
-No local database-client or end-to-end application screenshot is embedded because no such image was available from the connected repository. The automated PostgreSQL 18 CI run is linked from the README and provides reproducible execution evidence, including transaction behavior. A separate simultaneous-session concurrency/isolation demonstration is not yet included. A local-client screenshot or application demo image must not be fabricated; the web application is not implemented in the tracked repository.
+No local database-client or end-to-end application screenshot is embedded because no such image was available from the connected repository. The automated PostgreSQL 18 CI run is linked from the README and provides reproducible execution evidence, including transaction behavior, structural assertions, row-level locking, SELECT FOR UPDATE, and REPEATABLE READ behavior using two independent sessions. A local-client screenshot or application demo image must not be fabricated; the web application is not implemented in the tracked repository.
 
 ## 9. Evaluation Rubric — Completion Status
 
@@ -151,6 +151,8 @@ No local database-client or end-to-end application screenshot is embedded becaus
 | SQL query coverage | Three SQL query files; synthetic seed dataset; PostgreSQL 18 CI | Implemented and executed in CI |
 | Views, functions, procedure, triggers | Schema dump; behavioral tests; PostgreSQL 18 CI | Implemented and behavior-tested in CI |
 | Transactions | `database/verification/03_transaction_demo.sql`; PostgreSQL 18 CI | COMMIT, SAVEPOINT rollback, and full ROLLBACK are executed and asserted in CI |
+| Concurrency and isolation | `database/verification/05_concurrency_demo.sh`; PostgreSQL 18 CI | Two-session row-lock waiting, SELECT FOR UPDATE, and REPEATABLE READ snapshot behavior are asserted in CI |
+| Final structural audit | `database/verification/04_final_structure_assertions.sql`; PostgreSQL 18 CI | Required tables, integrity constraints, triggers, view, routines, and index are asserted in CI |
 | NoSQL/vector database | Optional pgvector migration and similarity-query reference | Documented; requires pgvector-enabled runtime and real embedding model |
 | FastAPI backend | API design document only | Not implemented in tracked source |
 | Next.js frontend | Proposed project tree only | Not implemented in tracked source |
