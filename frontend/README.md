@@ -24,7 +24,7 @@ Start the development server:
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Sign in with an existing backend account; successful login opens `/dashboard`, where the session is checked and can be ended with **Sign out**. The bearer token is stored in `sessionStorage` for the current browser tab. It is not stored in an HttpOnly cookie; avoid untrusted scripts and use HTTPS outside local development. The dashboard displays no company or risk data.
+Open [http://localhost:3000](http://localhost:3000). Sign in with an existing account or use **Create account** to register through `POST /api/v1/auth/register`. Registration does not sign you in automatically; after success, return to the login page and sign in explicitly. Successful login opens `/dashboard`, where the session is checked and can be ended with **Sign out**. The bearer token is stored in `sessionStorage` for the current browser tab. It is not stored in an HttpOnly cookie; avoid untrusted scripts and use HTTPS outside local development. The dashboard displays no company or risk data.
 
 ## Production build
 

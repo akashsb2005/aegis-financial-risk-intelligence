@@ -18,6 +18,7 @@ type LoginResponse = {
 
 type ApiErrorResponse = {
   error?: {
+    code?: unknown;
     message?: unknown;
   };
 };
@@ -40,9 +41,27 @@ function getApiErrorMessage(payload: unknown, status: number): string {
   return `The API request failed (${status}). Please try again.`;
 }
 
+function getRegistrationErrorMessage(payload: unknown, status: number): string {
+  if (typeof payload === "object" && payload !== null && "error" in payload) {
+    const code = (payload as ApiErrorResponse).error?.code;
+    if (code === "EMAIL_ALREADY_REGISTERED" || status === 409) {
+      return "An account with this email already exists. Try signing in instead.";
+    }
+  }
+
+  if (status === 422) {
+    return "Please check the name, email, and password requirements and try again.";
+  }
+  if (status >= 500) {
+    return "The registration service is unavailable right now. Please try again later.";
+  }
+  return "We could not create your account. Check your details and try again.";
+}
+
 async function post(
   path: string,
   options: { body?: object; token?: string } = {},
+  getErrorMessage = getApiErrorMessage,
 ): Promise<Response> {
   getApiBaseUrl();
 
@@ -72,10 +91,22 @@ async function post(
     } catch {
       payload = undefined;
     }
-    throw new Error(getApiErrorMessage(payload, response.status));
+    throw new Error(getErrorMessage(payload, response.status));
   }
 
   return response;
+}
+
+export async function registerAccount(
+  fullName: string,
+  email: string,
+  password: string,
+): Promise<void> {
+  await post(
+    `${AUTH_API_PREFIX}/register`,
+    { body: { full_name: fullName, email, password } },
+    getRegistrationErrorMessage,
+  );
 }
 
 export async function login(email: string, password: string): Promise<LoginResponse> {

@@ -126,9 +126,9 @@ function LoginForm() {
             </form>
 
             <div className="mt-8 border-t border-slate-200 pt-6 text-center text-sm text-slate-500">
-              Exploring the interface?{" "}
-              <Link className="font-semibold text-[#294b84] hover:underline" href="/dashboard">
-                View the dashboard
+              Don&apos;t have an account?{" "}
+              <Link className="font-semibold text-[#294b84] hover:underline" href="/register">
+                Create account
               </Link>
             </div>
           </div>
