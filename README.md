@@ -15,6 +15,7 @@ AEGIS is a database-centric financial risk intelligence project. Its current, tr
 | `database/seeds/01_demo_data.sql` | Repeatable synthetic companies, financial records, analyst, and risk assessments |
 | `database/verification/01_schema_verification.sql` | Read-only schema/catalog verification |
 | `database/verification/02_behavioral_integration_tests.sql` | Trigger, append-only, and CHECK-constraint behavior tests |
+| `database/verification/03_transaction_demo.sql` | COMMIT, SAVEPOINT rollback, and full ROLLBACK demonstrations |
 | `database/vector/01_pgvector_evidence.sql` | Optional pgvector evidence-retrieval migration and sample queries |
 | `docs/PROJECT_REQUIREMENTS.md` | Project scope and requirements |
 | `docs/database/DATABASE_DESIGN.md` | Database design overview |
