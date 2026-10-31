@@ -55,3 +55,6 @@ jobs:
 
       - name: Execute read-only schema verification
         run: psql -v ON_ERROR_STOP=1 -f database/verification/01_schema_verification.sql
+
+      - name: Execute behavioral database integration tests
+        run: psql -v ON_ERROR_STOP=1 -f database/verification/02_behavioral_integration_tests.sql
