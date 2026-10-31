@@ -33,8 +33,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Confirm PostgreSQL client
-        run: psql --version
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          psql --version
 
       - name: Apply schema dump
         shell: bash
