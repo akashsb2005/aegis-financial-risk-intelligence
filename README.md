@@ -12,6 +12,10 @@ AEGIS is a database-centric financial risk intelligence project. Its current, tr
 | `database/queries/01_basic_queries.sql` | Filtering, sorting, NULL handling, and basic aggregation |
 | `database/queries/02_joins_and_aggregations.sql` | Joins, grouping, aggregate functions, and HAVING |
 | `database/queries/03_subqueries_ctes_window_functions.sql` | Subqueries, CTEs, and window functions |
+| `database/seeds/01_demo_data.sql` | Repeatable synthetic companies, financial records, analyst, and risk assessments |
+| `database/verification/01_schema_verification.sql` | Read-only schema/catalog verification |
+| `database/verification/02_behavioral_integration_tests.sql` | Trigger, append-only, and CHECK-constraint behavior tests |
+| `database/vector/01_pgvector_evidence.sql` | Optional pgvector evidence-retrieval migration and sample queries |
 | `docs/PROJECT_REQUIREMENTS.md` | Project scope and requirements |
 | `docs/database/DATABASE_DESIGN.md` | Database design overview |
 | `docs/database/ER_DESIGN.md` | ER model and relationship documentation |
@@ -40,18 +44,18 @@ Run the three query files in numeric order after applying the schema. They are r
 - Common table expressions (CTEs)
 - ROW_NUMBER, RANK, DENSE_RANK, LAG, LEAD, and running aggregates
 
-The query files are examples; actual result sets depend on the data loaded into the database.
+The query files are examples. Run `database/seeds/01_demo_data.sql` first to load deterministic synthetic demonstration data; it is safe to execute repeatedly and uses no real personal or financial data.
 
 ## Important database behavior
 
 - Risk assessments are historical records. The schema includes a trigger that rejects UPDATE and DELETE operations on the risk-assessment table.
 - An AFTER INSERT trigger copies assessment details into the audit table.
 - The audit table's source identifiers are not declared foreign keys in the tracked DDL; they are copied by the trigger.
-- The database schema currently does not define vector, news, or event tables.
+- The core database schema does not define news or event tables. An optional, separate pgvector migration and similarity-search examples are provided in `database/vector/01_pgvector_evidence.sql`; this requires pgvector to be installed and a real embedding model selected. It is not part of the core CI validation.
 
 ## Verification boundary
 
-The repository files can be inspected statically, but a successful GitHub commit does not prove that the SQL has been executed against a live PostgreSQL instance. Live database execution, application integration, and demo screenshots must be recorded only after they are actually performed.
+GitHub Actions provisions a disposable PostgreSQL 18 instance, applies the schema, loads the synthetic seed data, executes the analytical query portfolio, runs read-only catalog verification, and executes behavioral integration tests. This is genuine automated database execution evidence; it is not a screenshot of a local database client or proof of an end-to-end web application. See the [PostgreSQL validation workflow](.github/workflows/postgres-validation.yml) and [workflow runs](https://github.com/akashsb2005/aegis-financial-risk-intelligence/actions).
 
 ## Team
 
