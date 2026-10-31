@@ -64,3 +64,9 @@ jobs:
 
       - name: Execute transaction demonstrations
         run: psql -v ON_ERROR_STOP=1 -f database/verification/03_transaction_demo.sql
+
+      - name: Execute final database structure assertions
+        run: psql -v ON_ERROR_STOP=1 -f database/verification/04_final_structure_assertions.sql
+
+      - name: Execute two-session concurrency and isolation demonstration
+        run: bash database/verification/05_concurrency_demo.sh
