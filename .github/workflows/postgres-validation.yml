@@ -47,6 +47,9 @@ jobs:
           sed '/^\\restrict /d; /^\\unrestrict /d' database/ddl/01_schema.sql > /tmp/aegis_schema.sql
           psql -v ON_ERROR_STOP=1 -f /tmp/aegis_schema.sql
 
+      - name: Load deterministic synthetic demo data
+        run: psql -v ON_ERROR_STOP=1 -f database/seeds/01_demo_data.sql
+
       - name: Execute analytical query portfolio
         run: |
           psql -v ON_ERROR_STOP=1 -f database/queries/01_basic_queries.sql
