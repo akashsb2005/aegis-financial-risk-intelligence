@@ -1,4 +1,15 @@
+"use client";
+
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import AppSidebar from "@/components/app-sidebar";
+import {
+  clearSessionToken,
+  getSessionToken,
+  hasActiveSession,
+  logout,
+  subscribeToSession,
+} from "@/lib/auth";
 
 const sections = [
   {
@@ -16,22 +27,66 @@ const sections = [
 ];
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const hasSession = useSyncExternalStore(subscribeToSession, hasActiveSession, () => false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  useEffect(() => {
+    if (!hasSession) {
+      router.replace("/");
+    }
+  }, [hasSession, router]);
+
+  async function handleLogout() {
+    const token = getSessionToken();
+    setIsLoggingOut(true);
+
+    try {
+      if (token) {
+        await logout(token);
+      }
+      clearSessionToken();
+      router.replace("/");
+    } catch {
+      clearSessionToken();
+      router.replace("/?logout=failed");
+    }
+  }
+
+  if (!hasSession) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#f5f7fb] text-sm text-slate-500">
+        Checking your session...
+      </main>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#f5f7fb] md:flex">
       <AppSidebar />
       <div className="min-w-0 flex-1">
         <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-10 lg:py-11">
-          <header className="mb-8">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#5471a6]">
-              Overview
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#14213d]">
-              Your workspace
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-              The AEGIS dashboard shell is ready. Connect the API to view your workspace information.
-            </p>
-          </header>
+          <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+            <header>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#5471a6]">
+                Overview
+              </p>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#14213d]">
+                Your workspace
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                Your AEGIS session is active. Workspace data is not connected yet.
+              </p>
+            </header>
+            <button
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isLoggingOut}
+              onClick={handleLogout}
+              type="button"
+            >
+              {isLoggingOut ? "Signing out..." : "Sign out"}
+            </button>
+          </div>
 
           <section aria-label="Dashboard sections" className="grid gap-4 lg:grid-cols-3">
             {sections.map((section) => (

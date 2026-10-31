@@ -1,15 +1,44 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import type { FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { login, saveSessionToken } from "@/lib/auth";
 
 export default function LoginPage() {
-  const [message, setMessage] = useState("");
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-[#f5f7fb]" />}>
+      <LoginForm />
+    </Suspense>
+  );
+}
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+function LoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const logoutFailed = searchParams.get("logout") === "failed";
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage("Sign-in is not connected yet. Authentication will be added in a later step.");
+    setMessage("");
+    setIsSubmitting(true);
+
+    const formData = new FormData(event.currentTarget);
+    try {
+      const session = await login(
+        String(formData.get("email") ?? ""),
+        String(formData.get("password") ?? ""),
+      );
+      saveSessionToken(session.access_token);
+      router.replace("/dashboard");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to sign in. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -49,7 +78,7 @@ export default function LoginPage() {
               Sign in to your account
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              Access to the AEGIS workspace will be available when authentication is connected.
+              Use your AEGIS account credentials to access the workspace.
             </p>
 
             <form className="mt-9 space-y-5" onSubmit={handleSubmit}>
@@ -82,14 +111,16 @@ export default function LoginPage() {
                 />
               </div>
               <button
-                className="w-full rounded-lg bg-[#203b6b] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#294b84] focus:outline-none focus:ring-4 focus:ring-[#5272ad]/25"
+                className="w-full rounded-lg bg-[#203b6b] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#294b84] focus:outline-none focus:ring-4 focus:ring-[#5272ad]/25 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isSubmitting}
                 type="submit"
               >
-                Sign in
+                {isSubmitting ? "Signing in..." : "Sign in"}
               </button>
-              {message && (
-                <p aria-live="polite" className="rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                  {message}
+              {(message || logoutFailed) && (
+                <p aria-live="polite" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+                  {message ||
+                    "Your local session was cleared, but the API could not confirm logout. Check the backend connection."}
                 </p>
               )}
             </form>
@@ -103,7 +134,7 @@ export default function LoginPage() {
           </div>
         </div>
         <p className="text-center text-xs text-slate-400">
-          Secure access and API integration are not configured in this preview.
+          Your sign-in session is kept for this browser tab.
         </p>
       </section>
     </main>
