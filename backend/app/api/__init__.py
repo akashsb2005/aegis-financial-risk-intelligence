@@ -10,8 +10,14 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.schemas.company import CompanyResponse
 from app.schemas.financial_record import FinancialRecordResponse
+from app.schemas.risk_assessment import (
+    RiskAssessmentCreate,
+    RiskAssessmentResponse,
+    RiskSummaryResponse,
+)
 from app.services.company import CompanyNotFoundError, CompanyService
 from app.services.financial_record import FinancialRecordService
+from app.services.risk_assessment import RiskAssessmentService
 
 router = APIRouter()
 
@@ -88,3 +94,81 @@ def list_company_financial_records(
                 }
             },
         )
+
+
+@router.get(
+    "/companies/{company_id}/risk-assessments",
+    response_model=list[RiskAssessmentResponse],
+    responses={404: {"description": "Company not found"}},
+    tags=["risk-assessments"],
+)
+def list_company_risk_assessments(
+    company_id: Annotated[int, Path(gt=0)],
+    db: Session = Depends(get_db),
+) -> list[dict[str, Any]] | JSONResponse:
+    """List assessment history for an existing company."""
+    try:
+        return RiskAssessmentService(db).list_for_company(company_id)
+    except CompanyNotFoundError:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "COMPANY_NOT_FOUND",
+                    "message": f"Company with ID {company_id} was not found.",
+                }
+            },
+        )
+
+
+@router.post(
+    "/companies/{company_id}/risk-assessments",
+    response_model=RiskAssessmentResponse,
+    status_code=201,
+    responses={404: {"description": "Company not found"}},
+    tags=["risk-assessments"],
+)
+def create_company_risk_assessment(
+    company_id: Annotated[int, Path(gt=0)],
+    assessment: RiskAssessmentCreate,
+    db: Session = Depends(get_db),
+) -> dict[str, Any] | JSONResponse:
+    """Create an assessment through the existing PostgreSQL procedure."""
+    try:
+        return RiskAssessmentService(db).create_for_company(company_id, assessment)
+    except CompanyNotFoundError:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "COMPANY_NOT_FOUND",
+                    "message": f"Company with ID {company_id} was not found.",
+                }
+            },
+        )
+
+
+@router.get(
+    "/companies/{company_id}/risk-summary",
+    response_model=RiskSummaryResponse,
+    responses={404: {"description": "Company not found"}},
+    tags=["risk-assessments"],
+)
+def get_company_risk_summary(
+    company_id: Annotated[int, Path(gt=0)],
+    db: Session = Depends(get_db),
+) -> RiskSummaryResponse | JSONResponse:
+    """Return current risk details from the existing database view."""
+    try:
+        summary = RiskAssessmentService(db).get_summary(company_id)
+    except CompanyNotFoundError:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "COMPANY_NOT_FOUND",
+                    "message": f"Company with ID {company_id} was not found.",
+                }
+            },
+        )
+    return RiskSummaryResponse.model_validate(summary)
