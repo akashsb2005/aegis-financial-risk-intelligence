@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 REGISTRATION='AEGIS-CONCURRENCY-CI'
-COMPANY_ID="$(psql -X -A -t -v ON_ERROR_STOP=1 -c "
+COMPANY_ID="$(psql -X -qAt -v ON_ERROR_STOP=1 -c "
  INSERT INTO public.companies(company_name,registration_number,industry,country)
- VALUES ('AEGIS Concurrency CI','\${REGISTRATION}','Testing','IN')
+ VALUES ('AEGIS Concurrency CI','AEGIS-CONCURRENCY-CI','Testing','IN')
  ON CONFLICT(registration_number) DO UPDATE SET company_name=EXCLUDED.company_name
  RETURNING company_id;
 " | tail -n 1)"
 cleanup() {
- [[ -n "\${LOCK_PID:-}" ]] && kill "$LOCK_PID" 2>/dev/null || true
- [[ -n "\${SNAPSHOT_PID:-}" ]] && kill "$SNAPSHOT_PID" 2>/dev/null || true
- psql -X -v ON_ERROR_STOP=1 -c "DELETE FROM public.companies WHERE company_id=\${COMPANY_ID};" >/dev/null || true
+ [[ -n "${LOCK_PID:-}" ]] && kill "$LOCK_PID" 2>/dev/null || true
+ [[ -n "${SNAPSHOT_PID:-}" ]] && kill "$SNAPSHOT_PID" 2>/dev/null || true
+ psql -X -v ON_ERROR_STOP=1 -c "DELETE FROM public.companies WHERE company_id=${COMPANY_ID};" >/dev/null || true
 }
 trap cleanup EXIT
 psql -X -v ON_ERROR_STOP=1 -v company_id="$COMPANY_ID" <<'SQL'
@@ -47,9 +47,9 @@ SQL
 LOCK_ELAPSED=$(( $(date +%s)-LOCK_START ))
 wait "$LOCK_PID"; unset LOCK_PID; rm -f "$LOCK_LOG"
 if (( LOCK_ELAPSED < 2 )); then
- echo "Expected lock wait >=2s; elapsed=\${LOCK_ELAPSED}s"; exit 1
+ echo "Expected lock wait >=2s; elapsed=${LOCK_ELAPSED}s"; exit 1
 fi
-echo "PASS: competing SELECT FOR UPDATE waited \${LOCK_ELAPSED}s for row lock."
+echo "PASS: competing SELECT FOR UPDATE waited ${LOCK_ELAPSED}s for row lock."
 SNAPSHOT_LOG="$(mktemp)"
 psql -X -v ON_ERROR_STOP=1 -v company_id="$COMPANY_ID" >"$SNAPSHOT_LOG" 2>&1 <<'SQL' &
 BEGIN ISOLATION LEVEL REPEATABLE READ;
