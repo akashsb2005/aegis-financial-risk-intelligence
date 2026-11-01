@@ -13,6 +13,11 @@ import {
 import { CompaniesApiError, getCompanies } from "@/lib/companies";
 import type { Company } from "@/lib/companies";
 import {
+  FinancialRecordsApiError,
+  getFinancialRecords,
+} from "@/lib/financial-records";
+import type { FinancialRecord } from "@/lib/financial-records";
+import {
   getRiskAssessments,
   getRiskSummary,
   RiskAssessmentsApiError,
@@ -21,13 +26,6 @@ import type {
   RiskAssessmentResponse,
   RiskSummaryResponse,
 } from "@/lib/risk-assessments";
-
-const placeholderSections = [
-  {
-    title: "Financial records",
-    description: "Financial record summaries will appear here.",
-  },
-];
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -38,6 +36,8 @@ export default function DashboardPage() {
   const [companiesError, setCompaniesError] = useState("");
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
   const [riskState, setRiskState] = useState<RiskViewState>({ status: "idle" });
+  const [financialRecordsState, setFinancialRecordsState] =
+    useState<FinancialRecordsViewState>({ status: "idle" });
 
   useEffect(() => {
     if (!hasSession) {
@@ -137,6 +137,50 @@ export default function DashboardPage() {
     }
 
     void loadRiskData();
+    return () => {
+      isCurrent = false;
+    };
+  }, [hasSession, router, selectedCompanyId]);
+
+  useEffect(() => {
+    if (!selectedCompanyId || !hasSession) {
+      return;
+    }
+
+    let isCurrent = true;
+    async function loadFinancialRecords() {
+      const token = getSessionToken();
+      if (!token) {
+        router.replace("/");
+        return;
+      }
+
+      setFinancialRecordsState({ status: "loading" });
+      try {
+        const records = await getFinancialRecords(token, Number(selectedCompanyId));
+        if (isCurrent) {
+          setFinancialRecordsState({ status: "loaded", records });
+        }
+      } catch (error) {
+        if (!isCurrent) {
+          return;
+        }
+        if (error instanceof FinancialRecordsApiError && error.status === 401) {
+          clearSessionToken();
+          router.replace("/");
+          return;
+        }
+        setFinancialRecordsState({
+          status: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Could not load financial records. Please try again.",
+        });
+      }
+    }
+
+    void loadFinancialRecords();
     return () => {
       isCurrent = false;
     };
@@ -253,6 +297,9 @@ export default function DashboardPage() {
                     setRiskState(
                       event.target.value ? { status: "loading" } : { status: "idle" },
                     );
+                    setFinancialRecordsState(
+                      event.target.value ? { status: "loading" } : { status: "idle" },
+                    );
                   }}
                   value={selectedCompanyId}
                 >
@@ -268,26 +315,11 @@ export default function DashboardPage() {
           </section>
 
           {selectedCompanyId && (
-            <RiskAssessmentSection state={riskState} />
+            <>
+              <RiskAssessmentSection state={riskState} />
+              <FinancialRecordsSection state={financialRecordsState} />
+            </>
           )}
-
-          <section aria-label="Dashboard sections" className="grid gap-4 lg:grid-cols-2">
-            {placeholderSections.map((section) => (
-              <article
-                className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40"
-                key={section.title}
-              >
-                <div className="mb-7 flex h-9 w-9 items-center justify-center rounded-lg bg-[#edf2fa]">
-                  <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[#5471a6]" />
-                </div>
-                <h2 className="text-base font-semibold text-[#14213d]">{section.title}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-500">{section.description}</p>
-                <p className="mt-5 border-t border-slate-100 pt-4 text-xs font-medium text-slate-400">
-                  Not connected
-                </p>
-              </article>
-            ))}
-          </section>
         </div>
       </div>
     </div>
@@ -331,6 +363,105 @@ type RiskViewState =
       summary: RiskSummaryResponse;
       assessments: RiskAssessmentResponse[];
     };
+
+type FinancialRecordsViewState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "loaded"; records: FinancialRecord[] };
+
+function FinancialRecordsSection({ state }: { state: FinancialRecordsViewState }) {
+  return (
+    <section aria-labelledby="financial-records-heading" className="mb-8">
+      <h2
+        className="mb-4 text-xl font-semibold tracking-tight text-[#14213d]"
+        id="financial-records-heading"
+      >
+        Financial records
+      </h2>
+      {state.status === "loading" || state.status === "idle" ? (
+        <div
+          aria-live="polite"
+          className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm"
+          role="status"
+        >
+          Loading financial records...
+        </div>
+      ) : state.status === "error" ? (
+        <div
+          aria-live="assertive"
+          className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800"
+          role="alert"
+        >
+          {state.message}
+        </div>
+      ) : state.records.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 px-5 py-8 text-center">
+          <p className="text-sm font-medium text-slate-700">No financial records yet.</p>
+        </div>
+      ) : (
+        <ul className="grid list-none gap-4 p-0">
+          {state.records.map((record) => (
+            <li key={record.financial_record_id}>
+              <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40">
+                <h3 className="text-base font-semibold text-[#14213d]">
+                  Fiscal year {record.fiscal_year}
+                </h3>
+                <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  <FinancialRecordDetail label="Revenue" value={record.revenue} />
+                  <FinancialRecordDetail label="Net profit" value={record.net_profit} />
+                  <FinancialRecordDetail label="Total assets" value={record.total_assets} />
+                  <FinancialRecordDetail
+                    label="Total liabilities"
+                    value={record.total_liabilities}
+                  />
+                  <FinancialRecordDetail label="Total debt" value={record.total_debt} />
+                  <FinancialRecordDetail
+                    label="Shareholders' equity"
+                    value={record.shareholders_equity}
+                  />
+                  <FinancialRecordDetail
+                    label="Operating cash flow"
+                    value={record.operating_cash_flow}
+                  />
+                  <div>
+                    <dt className="text-xs font-medium text-slate-400">Created</dt>
+                    <dd className="mt-1 break-words text-sm text-slate-700">
+                      {formatDate(record.created_at) ?? "—"}
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function FinancialRecordDetail({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div>
+      <dt className="text-xs font-medium text-slate-400">{label}</dt>
+      <dd className="mt-1 break-words text-sm text-slate-700">{formatFinancialValue(value)}</dd>
+    </div>
+  );
+}
+
+function formatFinancialValue(value: string | null): string {
+  if (value === null) {
+    return "—";
+  }
+
+  const decimal = value.match(/^([+-]?)(\d+)(\.\d+)?$/);
+  if (!decimal) {
+    return value;
+  }
+
+  const [, sign, integer, fraction = ""] = decimal;
+  return `${sign}${integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${fraction}`;
+}
 
 function RiskAssessmentSection({ state }: { state: RiskViewState }) {
   return (
