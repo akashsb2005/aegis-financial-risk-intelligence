@@ -2,9 +2,9 @@
 
 ## 1. Purpose and implementation status
 
-AEGIS is a financial risk and event-intelligence application. The current implemented application consists of a Next.js frontend, a FastAPI backend, and PostgreSQL. The database is the source of truth for company, financial, identity, risk-assessment, and audit data.
+The current application consists of a Next.js frontend, a FastAPI backend, and PostgreSQL. PostgreSQL is the source of truth for the company, financial, identity, risk-assessment, and audit data used by the implemented application.
 
-This document distinguishes implemented components from planned ML, event-ingestion, vector-retrieval, and AI capabilities. A box in the planned architecture is not evidence that the component is already operational.
+This document separates implemented components from planned intelligence capabilities. Components shown in the planned architecture are not claims of current operation.
 
 ## 2. Current implemented architecture
 
@@ -17,49 +17,60 @@ flowchart TD
     SERVICES --> DB[(PostgreSQL)]
     DB --> CORE[Companies and financial records]
     DB --> ID[Roles, users, sessions, reset tokens]
-    DB --> RISK[Risk assessments]
+    DB --> RISK[Risk assessments and summary view]
     RISK --> TRIGGER[Audit insert trigger]
     TRIGGER --> AUDIT[Risk assessment audit snapshots]
+    DB --> MARKET[Additive market/evidence schema]
     WEB --> DASH[Company, financial and risk dashboard]
     API --> DASH
 ```
 
+The frontend is in `frontend/`; the backend routes, schemas, services, repositories, and database session handling are in `backend/app/`. The core database DDL is `database/ddl/01_schema.sql`; market/evidence objects are a separate additive migration at `database/ddl/02_market_evidence.sql`. The application accesses PostgreSQL through the backend and does not define a competing schema.
+
 ### Implemented application responsibilities
 
 **Next.js frontend**
-- Registration, login, logout and session-protected dashboard.
-- Company monitoring.
-- Financial-record display.
+- Registration, login, logout, and a session-protected dashboard.
+- Company monitoring and financial-record display.
 - Risk summary and assessment history.
-- Database audit-history display.
+- Database audit-history display for the selected company.
 
 **FastAPI backend**
 - Versioned API mounted at `/api/v1`.
-- Authentication, session and role-aware dependencies.
+- Authentication, server-managed sessions, and role-aware dependencies.
 - Company and financial-record reads.
-- Risk summary, assessment history, assessment creation and audit-history reads.
+- Risk summary, assessment history, assessment creation, and audit-history reads.
 - Pydantic schemas and service/repository separation.
 
 **PostgreSQL**
-- Company and annual financial data.
-- Roles, users, sessions and password-reset tokens.
-- Risk assessments and append-only protection.
-- Trigger-generated risk-assessment audit snapshots.
-- Company risk view, database routines, constraints and indexes.
+- Company and annual financial data; roles, users, sessions, and reset tokens.
+- Risk assessments, append-only protection, and trigger-generated audit snapshots.
+- Company risk view, routines, constraints, and indexes.
+- The separate market/evidence migration adds securities, market observations, events, news articles, and model-prediction storage. Its presence does not imply live news ingestion or ML inference.
 
-## 3. Current data flow
+## 3. Authentication and authorization flow
 
 1. A user registers or signs in through the Next.js interface.
-2. The frontend sends requests to FastAPI using the configured API base URL.
-3. FastAPI validates requests and checks authentication/authorization dependencies.
-4. Service and repository code accesses PostgreSQL.
-5. Company, financial, risk-summary, assessment-history and audit-history data are returned to the frontend.
-6. When an authorized ANALYST creates a risk assessment, the backend calls the existing database procedure; the database trigger records an audit snapshot.
-7. The dashboard displays the returned records.
+2. FastAPI validates credentials and creates a server-managed session; the database stores the bearer token hash in `user_sessions`.
+3. The frontend retains its session token in browser `sessionStorage` and sends it with protected API requests.
+4. FastAPI resolves the session and derives the user identity and role from PostgreSQL.
+5. Company, financial-record, risk-read, and audit-history routes require authentication. Risk-assessment creation additionally requires the ANALYST role; the authenticated identity supplies `assessed_by`.
 
-## 4. Planned intelligence architecture
+The current browser session storage is not an HttpOnly-cookie design and is a known security limitation. Database credentials remain server-side; browser code does not connect directly to PostgreSQL.
 
-The following diagram describes the target project scope. The ML models, event/news pipeline, full semantic retrieval flow, and evidence-grounded AI explanation are not yet complete.
+## 4. Risk-assessment and audit flow
+
+1. An authenticated ANALYST selects a company and submits an assessment through the frontend.
+2. FastAPI validates the request, verifies the company, sets the assessor to the authenticated user, and calls the existing PostgreSQL procedure.
+3. PostgreSQL inserts an append-only row into `risk_assessment`.
+4. The existing `AFTER INSERT` trigger invokes `public.log_risk_assessment()` and copies the assessment fields into `risk_assessment_audit`.
+5. The dashboard retrieves risk summary/history and audit snapshots through company-scoped API routes. Both `GET /api/v1/companies/{company_id}/audit-history` and the paginated `GET /api/v1/companies/{company_id}/risk-audit-history` read those persisted snapshots.
+
+The audit API does not replace the trigger or modify the schema. In the core DDL, copied audit identifiers are not declared as foreign keys.
+
+## 5. Planned intelligence architecture
+
+The following target architecture is not fully implemented: trained models, automated event/news ingestion, complete semantic retrieval, and evidence-grounded AI explanations remain future work.
 
 ```mermaid
 flowchart TD
@@ -83,33 +94,10 @@ flowchart TD
     API --> UI[Next.js dashboard]
 ```
 
-Planned intelligence components must preserve provenance: dataset/source, observation time, feature definition, model version, prediction time, and evidence identifiers. Exact numeric financial facts should come from structured data or deterministic calculations; retrieved text supports contextual explanations.
+The repository includes a historical market-data adapter, but that is not automated live news/event ingestion or an ML prediction service. Docker, cloud hosting, and production deployment are outside the agreed project scope.
 
-## 5. Database integrity and history
+## 6. Database integrity and verification
 
-The implemented schema separates company master data, financial records, identity/access data, risk assessments, and audit snapshots. Primary keys, foreign keys, uniqueness/check constraints, routines, views and triggers are defined in the database DDL.
+The PostgreSQL DDL defines constraints, routines, views, and triggers for the tracked schema. Risk assessments are historical records; the append-only trigger prevents the covered UPDATE/DELETE operations, and an `AFTER INSERT` trigger writes the audit snapshot.
 
-Risk assessments are historical records. The append-only protection trigger prevents ordinary UPDATE/DELETE operations covered by that trigger. An AFTER INSERT trigger records a snapshot in `risk_assessment_audit`. The audit-history API reads those existing snapshots; it does not replace the trigger or modify the schema.
-
-The current audit table's copied source identifiers are not foreign-key-enforced in the core DDL. Preserve that limitation in explanations and reports.
-
-## 6. Security boundary
-
-- Passwords are stored as hashes, not plaintext.
-- Database credentials belong in environment configuration, not frontend source.
-- Protected API operations use authentication dependencies; risk-assessment creation additionally requires the ANALYST role.
-- The frontend currently stores the session token in browser `sessionStorage`, not an HttpOnly cookie. This is a known limitation and should not be described as production-grade session security.
-- Database access remains behind the backend; browser code must not connect directly to PostgreSQL.
-
-## 7. Verification boundary and known gaps
-
-The repository includes backend tests and PostgreSQL CI validation. Frontend production-build verification is documented in the README. These checks do not by themselves prove every possible end-to-end workflow.
-
-Not yet complete:
-- Curated financial market observations and securities data pipeline.
-- Financial event/news storage and ingestion.
-- Two trained and evaluated ML models and prediction-serving integration.
-- Full production pgvector embedding/retrieval workflow.
-- Evidence-grounded AI explanation workflow.
-
-Docker, cloud hosting, and production deployment are outside the agreed project scope and are not deliverables for this implementation.
+Backend API tests use a separate disposable PostgreSQL database. PostgreSQL CI validation checks database behavior; frontend production-build verification is documented in the README. These checks do not by themselves prove every possible end-to-end workflow.

@@ -13,6 +13,11 @@ import {
 import { CompaniesApiError, getCompanies } from "@/lib/companies";
 import type { Company } from "@/lib/companies";
 import {
+  AuditHistoryApiError,
+  getAuditHistory,
+} from "@/lib/audit-history";
+import type { AuditHistoryRecord } from "@/lib/audit-history";
+import {
   FinancialRecordsApiError,
   getFinancialRecords,
 } from "@/lib/financial-records";
@@ -38,6 +43,8 @@ export default function DashboardPage() {
   const [companiesError, setCompaniesError] = useState("");
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
   const [riskState, setRiskState] = useState<RiskViewState>({ status: "idle" });
+  const [auditHistoryState, setAuditHistoryState] =
+    useState<AuditHistoryViewState>({ status: "idle" });
   const [financialRecordsState, setFinancialRecordsState] =
     useState<FinancialRecordsViewState>({ status: "idle" });
 
@@ -145,6 +152,50 @@ export default function DashboardPage() {
     }
 
     void loadRiskData();
+    return () => {
+      isCurrent = false;
+    };
+  }, [hasSession, router, selectedCompanyId]);
+
+  useEffect(() => {
+    if (!selectedCompanyId || !hasSession) {
+      return;
+    }
+
+    let isCurrent = true;
+    async function loadAuditHistory() {
+      const token = getSessionToken();
+      if (!token) {
+        router.replace("/");
+        return;
+      }
+
+      setAuditHistoryState({ status: "loading" });
+      try {
+        const records = await getAuditHistory(token, Number(selectedCompanyId));
+        if (isCurrent) {
+          setAuditHistoryState({ status: "loaded", records });
+        }
+      } catch (error) {
+        if (!isCurrent) {
+          return;
+        }
+        if (error instanceof AuditHistoryApiError && error.status === 401) {
+          clearSessionToken();
+          router.replace("/");
+          return;
+        }
+        setAuditHistoryState({
+          status: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Could not load audit history. Please try again.",
+        });
+      }
+    }
+
+    void loadAuditHistory();
     return () => {
       isCurrent = false;
     };
@@ -305,6 +356,9 @@ export default function DashboardPage() {
                     setRiskState(
                       event.target.value ? { status: "loading" } : { status: "idle" },
                     );
+                    setAuditHistoryState(
+                      event.target.value ? { status: "loading" } : { status: "idle" },
+                    );
                     setFinancialRecordsState(
                       event.target.value ? { status: "loading" } : { status: "idle" },
                     );
@@ -325,6 +379,13 @@ export default function DashboardPage() {
           {selectedCompanyId && (
             <>
               <RiskAssessmentSection state={riskState} />
+              <AuditHistorySection
+                companyName={
+                  companies.find((company) => company.company_id === Number(selectedCompanyId))
+                    ?.company_name ?? "Selected company"
+                }
+                state={auditHistoryState}
+              />
               <FinancialRecordsSection state={financialRecordsState} />
             </>
           )}
@@ -378,6 +439,78 @@ type FinancialRecordsViewState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "loaded"; records: FinancialRecord[] };
+
+type AuditHistoryViewState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "loaded"; records: AuditHistoryRecord[] };
+
+function AuditHistorySection({
+  companyName,
+  state,
+}: {
+  companyName: string;
+  state: AuditHistoryViewState;
+}) {
+  return (
+    <section aria-labelledby="audit-history-heading" className="mb-8">
+      <h2
+        className="mb-4 text-xl font-semibold tracking-tight text-[#14213d]"
+        id="audit-history-heading"
+      >
+        Risk assessment audit history
+      </h2>
+      {state.status === "loading" || state.status === "idle" ? (
+        <div
+          aria-live="polite"
+          className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm"
+          role="status"
+        >
+          Loading audit history...
+        </div>
+      ) : state.status === "error" ? (
+        <div
+          aria-live="assertive"
+          className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800"
+          role="alert"
+        >
+          {state.message}
+        </div>
+      ) : state.records.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 px-5 py-8 text-center">
+          <p className="text-sm font-medium text-slate-700">No audit history yet.</p>
+        </div>
+      ) : (
+        <ul className="grid list-none gap-3 p-0">
+          {state.records.map((record) => (
+            <li key={record.audit_id}>
+              <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40">
+                <h3 className="text-base font-semibold text-[#14213d]">{companyName}</h3>
+                <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  <RiskDetail label="Logged at" value={formatDate(record.logged_at)} />
+                  <RiskDetail label="Risk score" value={formatRiskScore(record.risk_score)} />
+                  <RiskDetail label="Risk level" value={record.risk_level} />
+                  <RiskDetail label="Model version" value={record.model_version} />
+                  <RiskDetail label="Action" value={record.action_type} />
+                  <RiskDetail
+                    label="Assessor user ID"
+                    value={record.assessed_by === null ? null : String(record.assessed_by)}
+                  />
+                </dl>
+                {record.explanation && (
+                  <p className="mt-4 border-t border-slate-100 pt-4 text-sm leading-6 text-slate-600">
+                    {record.explanation}
+                  </p>
+                )}
+              </article>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 function FinancialRecordsSection({ state }: { state: FinancialRecordsViewState }) {
   return (

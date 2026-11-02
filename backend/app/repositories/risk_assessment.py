@@ -28,6 +28,17 @@ def _risk_assessment_audit_table() -> Table:
 
 
 @lru_cache(maxsize=1)
+def _risk_assessment_audit_table() -> Table:
+    """Reflect the existing risk_assessment_audit table."""
+    return Table(
+        "risk_assessment_audit",
+        MetaData(),
+        schema="public",
+        autoload_with=engine,
+    )
+
+
+@lru_cache(maxsize=1)
 def _company_risk_view() -> Table:
     """Reflect the existing company_risk_view."""
     return Table("company_risk_view", MetaData(), schema="public", autoload_with=engine)
@@ -66,6 +77,19 @@ class RiskAssessmentRepository:
             .offset(offset)
         )
         return [dict(row) for row in self._session.execute(statement).mappings().all()]
+
+    def list_audit_history_for_company(self, company_id: int) -> list[dict[str, Any]]:
+        """Return persisted audit snapshots newest first."""
+        statement = (
+            select(self._audit)
+            .where(self._audit.c.company_id == company_id)
+            .order_by(
+                self._audit.c.logged_at.desc(),
+                self._audit.c.audit_id.desc(),
+            )
+        )
+        rows = self._session.execute(statement).mappings().all()
+        return [dict(row) for row in rows]
 
     def create_for_company(
         self,

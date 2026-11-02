@@ -4,11 +4,11 @@ AEGIS is a database-centric financial risk intelligence project built around Pos
 
 ## Current implementation status
 
-- **Backend:** FastAPI with PostgreSQL integration, authentication and session handling, role-based access control (RBAC), company, risk-assessment, and financial-record APIs.
-- **Frontend:** Next.js App Router with React, TypeScript, and Tailwind CSS. Account registration, login/logout, a session-protected dashboard, company monitoring, risk-assessment summary/history, database audit-history display, and financial-record viewing are integrated with the FastAPI API.
+- **Backend:** FastAPI with PostgreSQL integration, authentication and session handling, role-based access control (RBAC), company, risk-assessment, audit-history, and financial-record APIs.
+- **Frontend:** Next.js App Router with React, TypeScript, and Tailwind CSS. Account registration, login/logout, a session-protected dashboard, company monitoring, risk-assessment summary/history, PostgreSQL audit-history viewing, and financial-record viewing are integrated with the FastAPI API.
 - **Database:** PostgreSQL core schema plus a separate market/evidence migration for securities, OHLCV observations, financial events, news articles, and model-prediction storage. Repeatable public-security identifiers and schema assertions are included.
-- **Verification:** PostgreSQL CI validation passed for the audit-history API pull request. Earlier backend tests (26 passed) and a frontend production build were verified for the application baseline; see [verification](#verification-boundary). The full suite/build should be rerun after subsequent application changes.
-- **In progress:** Market-data storage and a Yahoo Finance historical OHLCV ingestion adapter are now implemented on a feature branch and awaiting CI review. The two trained/evaluated ML models, automated financial event/news ingestion, full pgvector embedding and semantic-retrieval integration, and evidence-grounded AI explanations remain outstanding.
+- **Verification:** The backend application test suite passed (**36 passed**) and the frontend production build completed successfully during merge verification. See [verification](#verification-boundary) for the separate PostgreSQL workflow evidence.
+- **In progress:** The repository includes a historical Yahoo Finance OHLCV ingestion adapter and additive market/evidence schema; these require their own validation. Two trained/evaluated ML models, automated financial event/news ingestion, full pgvector embedding and semantic-retrieval integration, and evidence-grounded AI explanations remain outstanding. Docker, cloud hosting, and production deployment are outside the agreed project scope.
 
 ## Repository contents
 
@@ -16,7 +16,12 @@ AEGIS is a database-centric financial risk intelligence project built around Pos
 |---|---|
 | `frontend/` | Next.js App Router application; see [frontend setup](frontend/README.md) |
 | `backend/` | FastAPI application, versioned routes, schemas, and service/repository layers |
-| `database/ddl/01_schema.sql` | Core PostgreSQL schema dump: extensions, tables, constraints, sequences, routines, and triggers |\n| `database/ddl/02_market_evidence.sql` | Additive securities, OHLCV market observations, events, news, and model-prediction migration |\n| `database/seeds/02_public_securities.sql` | Public company/security identifiers (no fabricated price history) |\n| `database/verification/06_market_evidence_assertions.sql` | Fail-fast assertions for the market/evidence schema |\n| `data_pipeline/` | Historical market-data ingestion adapter and setup instructions |\n| `docs/database/MARKET_EVIDENCE_DATA_MODEL.md` | Market/evidence data model and migration order |
+| `database/ddl/01_schema.sql` | Core PostgreSQL schema dump: extensions, tables, constraints, sequences, routines, and triggers |
+| `database/ddl/02_market_evidence.sql` | Additive securities, OHLCV market observations, events, news, and model-prediction migration |
+| `database/seeds/02_public_securities.sql` | Public company/security identifiers (no fabricated price history) |
+| `database/verification/06_market_evidence_assertions.sql` | Fail-fast assertions for the market/evidence schema |
+| `data_pipeline/` | Historical market-data ingestion adapter and setup instructions |
+| `docs/database/MARKET_EVIDENCE_DATA_MODEL.md` | Market/evidence data model and migration order |
 | `database/queries/01_basic_queries.sql` | Filtering, sorting, NULL handling, and basic aggregation |
 | `database/queries/02_joins_and_aggregations.sql` | Joins, grouping, aggregate functions, and HAVING |
 | `database/queries/03_subqueries_ctes_window_functions.sql` | Subqueries, CTEs, and window functions |
@@ -32,9 +37,10 @@ AEGIS is a database-centric financial risk intelligence project built around Pos
 | `docs/database/ER_DESIGN.md` | ER model and relationship documentation |
 | `docs/database/RELATIONAL_SCHEMA.md` | Relations, keys, constraints, indexes, and routines |
 | `docs/database/DATA_DICTIONARY.md` | Attribute-level data dictionary |
-| `docs/database/FUNCTIONAL_DEPENDENCIES.md` | Functional-dependency analysis |\n| `docs/database/ATTRIBUTE_CLOSURE_ANALYSIS.md` | Step-by-step attribute closures and candidate-key calculations |
+| `docs/database/FUNCTIONAL_DEPENDENCIES.md` | Functional-dependency analysis |
+| `docs/database/ATTRIBUTE_CLOSURE_ANALYSIS.md` | Step-by-step attribute closures and candidate-key calculations |
 | `docs/database/NORMALIZATION.md` | 1NF, 2NF, 3NF, and BCNF assessment |
-| `docs/database/SYSTEM_ARCHITECTURE.md` | Current implementation boundary and proposed architecture |
+| `docs/database/SYSTEM_ARCHITECTURE.md` | Current application architecture, data flow, and planned intelligence boundary |
 | `docs/api/API_DESIGN.md` | Implemented FastAPI endpoints, access rules, and known API gaps |
 | `docs/ml/ML_DESIGN.md` | ML workflow, target design, evaluation, and completion criteria |
 | `docs/TEAM_CONTRIBUTION.md` | Team roles and contribution record |
@@ -106,7 +112,7 @@ $env:AEGIS_TEST_DATABASE_URL = "postgresql+psycopg://<YOUR_USER>:<YOUR_PASSWORD>
 pytest -q backend/tests
 ```
 
-The currently verified result is **26 passed**.
+The merge verification result is **36 passed**.
 
 ### Frontend production build
 
@@ -117,7 +123,7 @@ npm ci
 npm run build
 ```
 
-The current production build has been verified successfully.
+The production build completed successfully during merge verification.
 
 ## SQL learning / evaluation portfolio
 
@@ -136,7 +142,7 @@ The query files are examples. Run `database/seeds/01_demo_data.sql` first to loa
 - Risk assessments are historical records. The schema includes a trigger that rejects UPDATE and DELETE operations on the risk-assessment table.
 - An AFTER INSERT trigger copies assessment details into the audit table.
 - The audit table's source identifiers are not declared foreign keys in the tracked DDL; they are copied by the trigger.
-- The core database schema does not define news or event tables. An optional, separate pgvector migration and similarity-search examples are provided in `database/vector/01_pgvector_evidence.sql`; this requires pgvector to be installed and a real embedding model selected. It is not part of the core CI validation.
+- The core database schema does not define news or event tables; those objects are part of the separate market/evidence migration. An optional pgvector migration and similarity-search examples are provided in `database/vector/01_pgvector_evidence.sql`; these require pgvector to be installed and a real embedding model selected and are not part of the core CI validation.
 
 ## Verification boundary
 
@@ -152,7 +158,7 @@ Genuine screenshots captured from the running AEGIS application during local Pos
 
 ## Current limitations and future work
 
-The project does not yet include the two trained and evaluated ML models, automated financial news/event ingestion, a complete pgvector embedding and semantic-retrieval workflow, or evidence-grounded AI explanations. The new market-data migration and ingestion adapter are pending CI validation and merge. These capabilities remain to be implemented and must not be presented as completed. Docker, cloud hosting, and production deployment are outside the agreed project scope. Frontend session tokens are currently held in browser `sessionStorage`, not an HttpOnly cookie; this is a current implementation limitation and is not a claim of production-grade authentication security.
+The project does not yet include the two trained and evaluated ML models, automated financial news/event ingestion, a complete pgvector embedding and semantic-retrieval workflow, or evidence-grounded AI explanations. The market/evidence schema and historical market-data adapter do not constitute those capabilities. Docker, cloud hosting, and production deployment are outside the agreed project scope. Frontend session tokens are currently held in browser `sessionStorage`, not an HttpOnly cookie; this is a current implementation limitation and is not a claim of production-grade authentication security.
 
 ## Team
 
