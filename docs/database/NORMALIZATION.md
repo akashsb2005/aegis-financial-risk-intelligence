@@ -127,14 +127,14 @@ These historical design choices support temporal analysis and comparison between
 
 ## 10. Lossless Decomposition and Dependency Preservation
 
-No additional decomposition is proposed by this analysis because no violation requiring decomposition has been identified in the documented dependencies.
+No additional decomposition is proposed by this analysis because no violation requiring decomposition has been identified in the documented dependencies. The attribute closures and candidate-key calculations are recorded in `ATTRIBUTE_CLOSURE_ANALYSIS.md`.
 
-Consequently, the current schema has not been subjected to a new decomposition that requires a separate lossless-join proof.
+Consequently, the current schema has not been subjected to a new non-trivial decomposition that requires a separate lossless-join proof. Retaining each original relation unchanged is the identity decomposition; this is not evidence for a lossless decomposition of some different relation into multiple projections.
 
 If a future dependency reveals a normalization violation, the proposed decomposition must be evaluated for:
 
-- Lossless reconstruction of the original relation.
-- Preservation of relevant functional dependencies.
+- Lossless reconstruction of the original relation, demonstrated using the applicable decomposition test.
+- Preservation of relevant functional dependencies, demonstrated using projected dependencies or an equivalent closure test.
 - Compatibility with primary keys, foreign keys, application queries, and historical-data requirements.
 
 ## 11. Final Conclusion
