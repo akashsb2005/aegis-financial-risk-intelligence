@@ -21,6 +21,7 @@ from app.schemas.auth import (
 )
 from app.schemas.company import CompanyResponse
 from app.schemas.financial_record import FinancialRecordResponse
+from app.schemas.risk_assessment_audit import RiskAssessmentAuditResponse
 from app.schemas.risk_assessment import (
     RiskAssessmentCreate,
     RiskAssessmentResponse,
@@ -237,3 +238,34 @@ def get_company_risk_summary(
             },
         )
     return RiskSummaryResponse.model_validate(summary)
+
+
+
+@router.get(
+    "/companies/{company_id}/risk-audit-history",
+    response_model=list[RiskAssessmentAuditResponse],
+    responses={404: {"description": "Company not found"}},
+    tags=["risk-assessments"],
+)
+def list_company_risk_audit_history(
+    company_id: Annotated[int, Path(gt=0)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    _user: AuthenticatedUser = Depends(require_authenticated_user),
+    db: Session = Depends(get_db),
+) -> list[dict[str, Any]] | JSONResponse:
+    """Return database-triggered audit snapshots for an existing company."""
+    try:
+        return RiskAssessmentService(db).list_audit_for_company(
+            company_id, limit=limit, offset=offset
+        )
+    except CompanyNotFoundError:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "COMPANY_NOT_FOUND",
+                    "message": f"Company with ID {company_id} was not found.",
+                }
+            },
+        )
