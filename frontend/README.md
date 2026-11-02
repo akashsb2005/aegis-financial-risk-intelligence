@@ -1,34 +1,66 @@
 # AEGIS Frontend
 
-The frontend is a Next.js App Router application built with React, TypeScript, and Tailwind CSS. It provides login and logout through the existing FastAPI authentication endpoints and a dashboard placeholder. Company and risk data are not connected.
+The AEGIS frontend is a Next.js App Router application built with React, TypeScript, and Tailwind CSS. It integrates with the existing FastAPI backend for authentication and PostgreSQL-backed application data.
+
+## Features
+
+The current frontend provides:
+
+- Account registration
+- Login and logout
+- Session-protected dashboard
+- Company monitoring
+- Risk assessment summary and history
+- Financial-record viewing
+- FastAPI API integration through a configurable API base URL
 
 ## Requirements
 
 - Node.js 20.9 or later
 - npm
+- Running AEGIS FastAPI backend and configured PostgreSQL database
 
 ## Setup
 
-From the `frontend` directory, install dependencies and create a local environment file:
+From the `frontend` directory:
 
 ```powershell
 npm ci
 Copy-Item .env.example .env.local
 ```
 
-Set `NEXT_PUBLIC_API_BASE_URL` in `.env.local` to the FastAPI v1 base URL. The default example is `http://localhost:8000/api/v1`. Next.js proxies `/api/v1/*` requests to this configured URL so browser requests remain same-origin.
+Set `NEXT_PUBLIC_API_BASE_URL` in `.env.local` to the FastAPI v1 base URL. For local development:
 
-Start the development server:
+```text
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
+```
+
+The Next.js rewrite forwards `/api/v1/*` requests to this API URL. Keep `.env.local` local and do not commit credentials or tokens.
+
+## Run in development
+
+The FastAPI backend and its PostgreSQL database must be configured and running. From the `frontend` directory:
 
 ```powershell
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Sign in with an existing account or use **Create account** to register through `POST /api/v1/auth/register`. Registration does not sign you in automatically; after success, return to the login page and sign in explicitly. Successful login opens `/dashboard`, where the session is checked and can be ended with **Sign out**. The bearer token is stored in `sessionStorage` for the current browser tab. It is not stored in an HttpOnly cookie; avoid untrusted scripts and use HTTPS outside local development. The dashboard displays no company or risk data.
+Open [http://localhost:3000](http://localhost:3000). Visitors can register an account and then sign in. Registration does not sign the user in automatically. A successful login opens the session-protected dashboard; users can sign out from there.
+
+## Session storage limitation
+
+The current frontend keeps the bearer session token in browser `sessionStorage` for the active tab. It is not stored in an HttpOnly cookie. This is a known security limitation; the implementation should not be considered production-grade authentication security.
 
 ## Production build
 
+From the `frontend` directory, build the production application:
+
 ```powershell
 npm run build
+```
+
+The current production build has been verified successfully. To serve the built application locally, run:
+
+```powershell
 npm start
 ```
