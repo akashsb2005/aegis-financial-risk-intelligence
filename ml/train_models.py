@@ -50,11 +50,11 @@ def build_features(frame: pd.DataFrame) -> pd.DataFrame:
     data["momentum_5d"] = grouped["close"].pct_change(5)
     data["momentum_20d"] = grouped["close"].pct_change(20)
     data["intraday_range"] = (data["high"] - data["low"]) / data["close"]
-    log_volume = np.log1p(data["volume"].clip(lower=0))
-    data["volume_zscore"] = data.groupby("security_id")[log_volume.name].transform(
+    data["_log_volume"] = np.log1p(data["volume"].clip(lower=0))
+    data["volume_zscore"] = data.groupby("security_id")["_log_volume"].transform(
         lambda x: (x - x.rolling(20, min_periods=20).mean()) /
                   x.rolling(20, min_periods=20).std().replace(0, np.nan)
-    ) if log_volume.name in data.columns else np.nan
+    )
     # Compute a 5-session forward realized volatility label. It is never an input feature.
     data["target_forward_volatility_5d"] = data.groupby("security_id")["return_1d"].transform(
         lambda x: x.shift(-1).rolling(5, min_periods=5).std().shift(-4)
