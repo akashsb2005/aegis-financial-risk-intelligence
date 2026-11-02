@@ -5,10 +5,10 @@ AEGIS is a database-centric financial risk intelligence project built around Pos
 ## Current implementation status
 
 - **Backend:** FastAPI with PostgreSQL integration, authentication and session handling, role-based access control (RBAC), company, risk-assessment, and financial-record APIs.
-- **Frontend:** Next.js App Router with React, TypeScript, and Tailwind CSS. Account registration, login/logout, a session-protected dashboard, company monitoring, risk-assessment summary/history, and financial-record viewing are integrated with the FastAPI API.
+- **Frontend:** Next.js App Router with React, TypeScript, and Tailwind CSS. Account registration, login/logout, a session-protected dashboard, company monitoring, risk-assessment summary/history, database audit-history display, and financial-record viewing are integrated with the FastAPI API.
 - **Database:** PostgreSQL schema, synthetic demo data, analytical SQL portfolio, and database verification scripts are included.
-- **Verification:** The backend application test suite has passed (**26 passed**), and the current frontend production build has completed successfully. See [verification](#verification-boundary) for the separate database workflow evidence.
-- **Not completed:** A trained ML model or model-serving/inference integration, live news/event ingestion, production pgvector deployment, and production deployment infrastructure. These remain future work.
+- **Verification:** PostgreSQL CI validation passed for the audit-history API pull request. Earlier backend tests (26 passed) and a frontend production build were verified for the application baseline; see [verification](#verification-boundary). The full suite/build should be rerun after subsequent application changes.
+- **Not completed:** The two required trained/evaluated ML models, financial event/news ingestion, full pgvector embedding and semantic-retrieval integration, and evidence-grounded AI explanations. These remain active project work.
 
 ## Repository contents
 
@@ -35,8 +35,8 @@ AEGIS is a database-centric financial risk intelligence project built around Pos
 | `docs/database/FUNCTIONAL_DEPENDENCIES.md` | Functional-dependency analysis |
 | `docs/database/NORMALIZATION.md` | 1NF, 2NF, 3NF, and BCNF assessment |
 | `docs/database/SYSTEM_ARCHITECTURE.md` | Current implementation boundary and proposed architecture |
-| `docs/api/API_DESIGN.md` | Proposed API contract and integration boundary |
-| `docs/ml/ML_DESIGN.md` | Proposed ML workflow and validation requirements |
+| `docs/api/API_DESIGN.md` | Implemented FastAPI endpoints, access rules, and known API gaps |
+| `docs/ml/ML_DESIGN.md` | ML workflow, target design, evaluation, and completion criteria |
 | `docs/TEAM_CONTRIBUTION.md` | Team roles and contribution record |
 
 ## Database setup
@@ -152,7 +152,7 @@ Genuine screenshots captured from the running AEGIS application during local Pos
 
 ## Current limitations and future work
 
-The project does not currently include a trained ML model or ML inference/model-serving integration, live news or event ingestion, a production pgvector deployment, or production deployment infrastructure. These capabilities are planned and should not be treated as completed. Frontend session tokens are currently held in browser `sessionStorage`, not an HttpOnly cookie; this is a current implementation limitation and is not a claim of production-grade authentication security.
+The project does not currently include the two required trained and evaluated ML models, financial news/event ingestion, a complete pgvector embedding and semantic-retrieval workflow, or evidence-grounded AI explanations. These capabilities remain to be implemented and must not be presented as completed. Docker, cloud hosting, and production deployment are outside the agreed project scope. Frontend session tokens are currently held in browser `sessionStorage`, not an HttpOnly cookie; this is a current implementation limitation and is not a claim of production-grade authentication security.
 
 ## Team
 
