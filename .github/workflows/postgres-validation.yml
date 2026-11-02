@@ -50,6 +50,18 @@ jobs:
       - name: Load deterministic synthetic demo data
         run: psql -v ON_ERROR_STOP=1 -f database/seeds/01_demo_data.sql
 
+      - name: Apply market and evidence data model
+        run: psql -v ON_ERROR_STOP=1 -f database/ddl/02_market_evidence.sql
+
+      - name: Load public security master identifiers
+        run: psql -v ON_ERROR_STOP=1 -f database/seeds/02_public_securities.sql
+
+      - name: Validate market and evidence schema
+        run: psql -v ON_ERROR_STOP=1 -f database/verification/06_market_evidence_assertions.sql
+
+      - name: Check market ingestion script syntax
+        run: python -m py_compile data_pipeline/ingest_market_data.py
+
       - name: Execute analytical query portfolio
         run: |
           psql -v ON_ERROR_STOP=1 -f database/queries/01_basic_queries.sql

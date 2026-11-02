@@ -1,4 +1,4 @@
-"""Database access for risk assessments and the existing risk summary view."""
+"""Database access for risk assessments and audit history."""
 
 from functools import lru_cache
 from typing import Any
@@ -13,8 +13,14 @@ from app.schemas.risk_assessment import RiskAssessmentCreate
 @lru_cache(maxsize=1)
 def _risk_assessments_table() -> Table:
     """Reflect the existing risk_assessment table."""
+    return Table("risk_assessment", MetaData(), schema="public", autoload_with=engine)
+
+
+@lru_cache(maxsize=1)
+def _risk_assessment_audit_table() -> Table:
+    """Reflect the existing append-only risk_assessment_audit table."""
     return Table(
-        "risk_assessment",
+        "risk_assessment_audit",
         MetaData(),
         schema="public",
         autoload_with=engine,
@@ -35,12 +41,7 @@ def _risk_assessment_audit_table() -> Table:
 @lru_cache(maxsize=1)
 def _company_risk_view() -> Table:
     """Reflect the existing company_risk_view."""
-    return Table(
-        "company_risk_view",
-        MetaData(),
-        schema="public",
-        autoload_with=engine,
-    )
+    return Table("company_risk_view", MetaData(), schema="public", autoload_with=engine)
 
 
 class RiskAssessmentRepository:
@@ -62,8 +63,20 @@ class RiskAssessmentRepository:
                 self._assessments.c.risk_assessment_id.desc(),
             )
         )
-        rows = self._session.execute(statement).mappings().all()
-        return [dict(row) for row in rows]
+        return [dict(row) for row in self._session.execute(statement).mappings().all()]
+
+    def list_audit_for_company(
+        self, company_id: int, limit: int = 50, offset: int = 0
+    ) -> list[dict[str, Any]]:
+        """Return immutable database audit snapshots newest first."""
+        statement = (
+            select(self._audit)
+            .where(self._audit.c.company_id == company_id)
+            .order_by(self._audit.c.logged_at.desc(), self._audit.c.audit_id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return [dict(row) for row in self._session.execute(statement).mappings().all()]
 
     def list_audit_history_for_company(self, company_id: int) -> list[dict[str, Any]]:
         """Return persisted audit snapshots newest first."""
@@ -108,14 +121,9 @@ class RiskAssessmentRepository:
         statement = select(self._assessments).where(
             self._assessments.c.risk_assessment_id == assessment_id
         )
-        row = self._session.execute(statement).mappings().one()
-        return dict(row)
+        return dict(self._session.execute(statement).mappings().one())
 
-    def get_summary(
-        self,
-        company_id: int,
-        company_name: str,
-    ) -> dict[str, Any]:
+    def get_summary(self, company_id: int, company_name: str) -> dict[str, Any]:
         """Return current risk details from the existing summary view."""
         statement = (
             select(self._risk_view)

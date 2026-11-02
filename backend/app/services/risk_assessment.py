@@ -1,4 +1,4 @@
-"""Application logic for company risk assessments."""
+"""Application logic for company risk assessments and audit history."""
 
 from typing import Any
 
@@ -10,7 +10,7 @@ from app.services.company import CompanyService
 
 
 class RiskAssessmentService:
-    """Provide company-scoped assessment history, creation, and summaries."""
+    """Provide company-scoped assessment history, audit history, and summaries."""
 
     def __init__(self, session: Session) -> None:
         self._session = session
@@ -26,6 +26,13 @@ class RiskAssessmentService:
         """Return audit snapshots for an existing company."""
         self._companies.get_company(company_id)
         return self._repository.list_audit_history_for_company(company_id)
+
+    def list_audit_for_company(
+        self, company_id: int, limit: int = 50, offset: int = 0
+    ) -> list[dict[str, Any]]:
+        """Return paginated audit snapshots after verifying the company exists."""
+        self._companies.get_company(company_id)
+        return self._repository.list_audit_for_company(company_id, limit, offset)
 
     def create_for_company(
         self,

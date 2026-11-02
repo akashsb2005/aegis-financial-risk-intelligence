@@ -1,64 +1,103 @@
 # AEGIS System Architecture
 
-## 1. Current application architecture
+## 1. Purpose and implementation status
 
-The current application uses a Next.js web frontend, a FastAPI backend, and the existing PostgreSQL database:
+The current application consists of a Next.js frontend, a FastAPI backend, and PostgreSQL. PostgreSQL is the source of truth for the company, financial, identity, risk-assessment, and audit data used by the implemented application.
+
+This document separates implemented components from planned intelligence capabilities. Components shown in the planned architecture are not claims of current operation.
+
+## 2. Current implemented architecture
 
 ```mermaid
 flowchart TD
-    U[Analyst / User] --> UI[Next.js Frontend]
-    UI -->|JSON API and bearer token| API[FastAPI Backend]
-    API --> AUTH[Authentication and RBAC]
-    API --> DB[(PostgreSQL)]
-    DB --> CORE[Companies and Financial Records]
-    DB --> RISK[Risk Assessments and Risk Summary View]
-    DB --> AUDIT[Risk Assessment Audit]
-    RISK -->|INSERT| TRIGGER[PostgreSQL Audit Trigger]
-    TRIGGER --> AUDIT
-    API -->|Company-scoped API responses| UI
+    USER[Analyst / User] --> WEB[Next.js App Router UI]
+    WEB -->|HTTP JSON + bearer token| API[FastAPI application]
+    API --> AUTH[Authentication and role dependencies]
+    API --> SERVICES[Service and repository layers]
+    SERVICES --> DB[(PostgreSQL)]
+    DB --> CORE[Companies and financial records]
+    DB --> ID[Roles, users, sessions, reset tokens]
+    DB --> RISK[Risk assessments and summary view]
+    RISK --> TRIGGER[Audit insert trigger]
+    TRIGGER --> AUDIT[Risk assessment audit snapshots]
+    DB --> MARKET[Additive market/evidence schema]
+    WEB --> DASH[Company, financial and risk dashboard]
+    API --> DASH
 ```
 
-The frontend is in `frontend/`; the backend application, API routes, schemas, services, repositories, and database session handling are in `backend/app/`. PostgreSQL objects are defined in `database/ddl/01_schema.sql`. The application reflects the existing tables rather than defining a competing schema.
+The frontend is in `frontend/`; the backend routes, schemas, services, repositories, and database session handling are in `backend/app/`. The core database DDL is `database/ddl/01_schema.sql`; market/evidence objects are a separate additive migration at `database/ddl/02_market_evidence.sql`. The application accesses PostgreSQL through the backend and does not define a competing schema.
 
-## 2. Authentication and authorization flow
+### Implemented application responsibilities
 
-1. The frontend submits registration or login requests to the FastAPI authentication routes.
-2. Registration creates an ANALYST account. Login verifies credentials and creates a server-managed session whose opaque bearer token is stored in hashed form in `user_sessions`.
-3. The frontend retains its active bearer token in browser `sessionStorage` and includes it on authenticated API requests.
-4. FastAPI resolves the token against an active, unexpired database session and derives the user and role from PostgreSQL.
-5. Company, financial-record, risk-read, and audit-history routes require authentication. Risk-assessment creation additionally requires the ANALYST role; the API takes the assessor ID from the authenticated identity.
+**Next.js frontend**
+- Registration, login, logout, and a session-protected dashboard.
+- Company monitoring and financial-record display.
+- Risk summary and assessment history.
+- Database audit-history display for the selected company.
 
-## 3. Risk-assessment and audit flow
+**FastAPI backend**
+- Versioned API mounted at `/api/v1`.
+- Authentication, server-managed sessions, and role-aware dependencies.
+- Company and financial-record reads.
+- Risk summary, assessment history, assessment creation, and audit-history reads.
+- Pydantic schemas and service/repository separation.
 
-1. An authenticated ANALYST selects a company and submits a risk assessment through the frontend.
-2. FastAPI validates the request, checks that the company exists, sets the assessor to the authenticated user, and calls the existing PostgreSQL assessment procedure.
-3. PostgreSQL inserts the append-only row into `risk_assessment`.
-4. The existing `AFTER INSERT` trigger invokes `public.log_risk_assessment()` and copies the inserted assessment fields to `risk_assessment_audit`.
-5. The frontend retrieves assessment history and risk summary through the existing API routes. It retrieves application audit history separately from `GET /api/v1/companies/{company_id}/audit-history`, which reads the persisted audit rows for that company.
+**PostgreSQL**
+- Company and annual financial data; roles, users, sessions, and reset tokens.
+- Risk assessments, append-only protection, and trigger-generated audit snapshots.
+- Company risk view, routines, constraints, and indexes.
+- The separate market/evidence migration adds securities, market observations, events, news articles, and model-prediction storage. Its presence does not imply live news ingestion or ML inference.
 
-Financial records are read from the existing PostgreSQL table through the company-scoped financial-record route. Company monitoring uses the authenticated company list/detail routes.
+## 3. Authentication and authorization flow
 
-## 4. Implemented and unimplemented boundaries
+1. A user registers or signs in through the Next.js interface.
+2. FastAPI validates credentials and creates a server-managed session; the database stores the bearer token hash in `user_sessions`.
+3. The frontend retains its session token in browser `sessionStorage` and sends it with protected API requests.
+4. FastAPI resolves the session and derives the user identity and role from PostgreSQL.
+5. Company, financial-record, risk-read, and audit-history routes require authentication. Risk-assessment creation additionally requires the ANALYST role; the authenticated identity supplies `assessed_by`.
 
-### Implemented
+The current browser session storage is not an HttpOnly-cookie design and is a known security limitation. Database credentials remain server-side; browser code does not connect directly to PostgreSQL.
 
-- Next.js frontend and FastAPI backend integration
-- PostgreSQL-backed authentication, sessions, and role-based access control
-- Company monitoring and financial-record reads
-- Risk assessment creation, history, and summary
-- Trigger-generated PostgreSQL audit snapshots and authenticated application-level audit-history reads
+## 4. Risk-assessment and audit flow
 
-### Not implemented
+1. An authenticated ANALYST selects a company and submits an assessment through the frontend.
+2. FastAPI validates the request, verifies the company, sets the assessor to the authenticated user, and calls the existing PostgreSQL procedure.
+3. PostgreSQL inserts an append-only row into `risk_assessment`.
+4. The existing `AFTER INSERT` trigger invokes `public.log_risk_assessment()` and copies the assessment fields into `risk_assessment_audit`.
+5. The dashboard retrieves risk summary/history and audit snapshots through company-scoped API routes. Both `GET /api/v1/companies/{company_id}/audit-history` and the paginated `GET /api/v1/companies/{company_id}/risk-audit-history` read those persisted snapshots.
 
-- Trained ML model or model inference/service integration
-- Live news or financial-event ingestion
-- Production pgvector deployment, embeddings, or RAG
-- Cloud hosting, containerization, or production deployment infrastructure
+The audit API does not replace the trigger or modify the schema. In the core DDL, copied audit identifiers are not declared as foreign keys.
 
-The optional SQL in `database/vector/01_pgvector_evidence.sql` is not an implemented application retrieval service. The proposed capabilities above must not be interpreted as current runtime components.
+## 5. Planned intelligence architecture
 
-## 5. Database integrity and verification
+The following target architecture is not fully implemented: trained models, automated event/news ingestion, complete semantic retrieval, and evidence-grounded AI explanations remain future work.
 
-The PostgreSQL schema defines company and financial data, user and role data, sessions and reset tokens, risk assessments, and audit snapshots. Database constraints and triggers enforce the rules represented in the tracked DDL. Risk assessments are append-only, and the audit table is populated by the database trigger rather than by a separate application-generated history.
+```mermaid
+flowchart TD
+    SOURCES[Curated financial and market datasets] --> PIPE[Validation, cleaning and feature engineering]
+    PIPE --> PG[(PostgreSQL relational data)]
+    PIPE --> TEXT[News and event text corpus]
+    PG --> ML[Python ML service]
+    ML --> ANOM[Market anomaly model]
+    ML --> RISK[Risk / volatility prediction model]
+    ANOM --> PRED[(Prediction and model metadata)]
+    RISK --> PRED
+    TEXT --> EMB[Embedding generation]
+    EMB --> VEC[(pgvector)]
+    USER[User query] --> RET[Evidence retrieval]
+    PG --> RET
+    VEC --> RET
+    RET --> EVID[Evidence package]
+    PRED --> EXPL[Evidence-grounded AI explanation]
+    EVID --> EXPL
+    EXPL --> API[FastAPI integration]
+    API --> UI[Next.js dashboard]
+```
 
-Backend API tests use a separate disposable PostgreSQL test database. Database verification scripts and the PostgreSQL validation workflow cover schema and database behavior independently of application-level API verification.
+The repository includes a historical market-data adapter, but that is not automated live news/event ingestion or an ML prediction service. Docker, cloud hosting, and production deployment are outside the agreed project scope.
+
+## 6. Database integrity and verification
+
+The PostgreSQL DDL defines constraints, routines, views, and triggers for the tracked schema. Risk assessments are historical records; the append-only trigger prevents the covered UPDATE/DELETE operations, and an `AFTER INSERT` trigger writes the audit snapshot.
+
+Backend API tests use a separate disposable PostgreSQL database. PostgreSQL CI validation checks database behavior; frontend production-build verification is documented in the README. These checks do not by themselves prove every possible end-to-end workflow.

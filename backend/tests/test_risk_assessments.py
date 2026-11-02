@@ -335,3 +335,73 @@ def test_only_analyst_can_create_assessments(
 
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+def test_authenticated_audit_history_returns_database_trigger_snapshot(
+    authenticated_client,
+    company,
+):
+    session = authenticated_client
+    create_response = session.client.post(
+        f"/api/v1/companies/{company.company_id}/risk-assessments",
+        headers=session.headers,
+        json=_assessment_payload(),
+    )
+    assert create_response.status_code == 201, create_response.text
+    assessment = create_response.json()
+
+    response = session.client.get(
+        f"/api/v1/companies/{company.company_id}/risk-audit-history",
+        headers=session.headers,
+    )
+
+    assert response.status_code == 200, response.text
+    entries = response.json()
+    assert len(entries) == 1
+    audit = entries[0]
+    assert audit["risk_assessment_id"] == assessment["risk_assessment_id"]
+    assert audit["company_id"] == company.company_id
+    assert audit["risk_score"] == "72.50"
+    assert audit["risk_level"] == "HIGH"
+    assert audit["action_type"] == "INSERT"
+    assert audit["model_version"] == "api-test-1"
+    assert audit["explanation"] == "Synthetic integration-test assessment."
+    assert audit["assessed_by"] == session.user_id
+    assert isinstance(audit["logged_at"], str)
+
+
+def test_audit_history_requires_authentication(client, company):
+    response = client.get(
+        f"/api/v1/companies/{company.company_id}/risk-audit-history"
+    )
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "UNAUTHENTICATED"
+
+
+def test_audit_history_returns_not_found_for_missing_company(
+    authenticated_client,
+):
+    response = authenticated_client.client.get(
+        "/api/v1/companies/2147483647/risk-audit-history",
+        headers=authenticated_client.headers,
+    )
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "COMPANY_NOT_FOUND"
+
+
+def test_audit_history_supports_pagination(authenticated_client, company):
+    session = authenticated_client
+    for score in ("21.00", "42.00", "63.00"):
+        response = session.client.post(
+            f"/api/v1/companies/{company.company_id}/risk-assessments",
+            headers=session.headers,
+            json=_assessment_payload(risk_score=score),
+        )
+        assert response.status_code == 201, response.text
+
+    response = session.client.get(
+        f"/api/v1/companies/{company.company_id}/risk-audit-history?limit=2&offset=1",
+        headers=session.headers,
+    )
+    assert response.status_code == 200, response.text
+    assert len(response.json()) == 2
