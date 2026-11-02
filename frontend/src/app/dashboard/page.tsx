@@ -19,11 +19,13 @@ import {
 import type { FinancialRecord } from "@/lib/financial-records";
 import {
   getRiskAssessments,
+  getRiskAuditHistory,
   getRiskSummary,
   RiskAssessmentsApiError,
 } from "@/lib/risk-assessments";
 import type {
   RiskAssessmentResponse,
+  RiskAuditHistoryResponse,
   RiskSummaryResponse,
 } from "@/lib/risk-assessments";
 
@@ -100,6 +102,7 @@ export default function DashboardPage() {
       const results = await Promise.allSettled([
         getRiskSummary(token, companyId),
         getRiskAssessments(token, companyId),
+        getRiskAuditHistory(token, companyId),
       ]);
       if (!isCurrent) {
         return;
@@ -117,11 +120,16 @@ export default function DashboardPage() {
         return;
       }
 
-      if (results[0].status === "fulfilled" && results[1].status === "fulfilled") {
+      if (
+        results[0].status === "fulfilled" &&
+        results[1].status === "fulfilled" &&
+        results[2].status === "fulfilled"
+      ) {
         setRiskState({
           status: "loaded",
           summary: results[0].value,
           assessments: results[1].value,
+          auditEntries: results[2].value,
         });
       } else {
         const failure = results.find((result) => result.status === "rejected");
@@ -362,6 +370,7 @@ type RiskViewState =
       status: "loaded";
       summary: RiskSummaryResponse;
       assessments: RiskAssessmentResponse[];
+      auditEntries: RiskAuditHistoryResponse[];
     };
 
 type FinancialRecordsViewState =
@@ -492,7 +501,8 @@ function RiskAssessmentSection({ state }: { state: RiskViewState }) {
         state.summary.current_risk_score === null &&
         state.summary.assessed_at === null &&
         state.summary.model_version === null &&
-        state.assessments.length === 0 ? (
+        state.assessments.length === 0 &&
+        state.auditEntries.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 px-5 py-8 text-center">
           <p className="text-sm font-medium text-slate-700">No risk assessment yet.</p>
         </div>
@@ -536,6 +546,43 @@ function RiskAssessmentSection({ state }: { state: RiskViewState }) {
                   </li>
                 ))}
               </ul>
+            )}
+          </div>
+
+          <div>
+            <h3 className="mb-3 text-base font-semibold text-[#14213d]">Database audit trail</h3>
+            {state.auditEntries.length === 0 ? (
+              <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500">
+                No audit events have been recorded for this company.
+              </p>
+            ) : (
+              <ol className="grid list-none gap-3 p-0">
+                {state.auditEntries.map((entry) => (
+                  <li key={entry.audit_id}>
+                    <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-[#14213d]">
+                          {entry.action_type} · Assessment #{entry.risk_assessment_id}
+                        </p>
+                        <time className="text-xs text-slate-500" dateTime={entry.logged_at}>
+                          {formatDate(entry.logged_at)}
+                        </time>
+                      </div>
+                      <dl className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                        <RiskDetail label="Recorded risk level" value={entry.risk_level} />
+                        <RiskDetail label="Recorded risk score" value={formatRiskScore(entry.risk_score)} />
+                        <RiskDetail label="Model version" value={entry.model_version} />
+                        <RiskDetail label="Recorded by user ID" value={entry.assessed_by === null ? null : String(entry.assessed_by)} />
+                      </dl>
+                      {entry.explanation && (
+                        <p className="mt-3 border-t border-slate-100 pt-3 text-sm leading-6 text-slate-600">
+                          {entry.explanation}
+                        </p>
+                      )}
+                    </article>
+                  </li>
+                ))}
+              </ol>
             )}
           </div>
         </div>
