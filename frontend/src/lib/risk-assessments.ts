@@ -206,3 +206,65 @@ export function getRiskAssessments(
     },
   );
 }
+
+
+export type RiskAuditHistoryResponse = {
+  audit_id: number;
+  risk_assessment_id: number;
+  company_id: number;
+  risk_score: number;
+  logged_at: string;
+  action_type: "INSERT";
+  risk_level: RiskLevel;
+  model_version: string | null;
+  explanation: string | null;
+  assessed_by: number | null;
+};
+
+function normalizeRiskAuditEntry(value: unknown): RiskAuditHistoryResponse | null {
+  if (typeof value !== "object" || value === null) return null;
+  const entry = value as Record<string, unknown>;
+  const score = parseRiskScore(entry.risk_score);
+  if (
+    typeof entry.audit_id !== "number" ||
+    typeof entry.risk_assessment_id !== "number" ||
+    typeof entry.company_id !== "number" ||
+    score === null || score === undefined ||
+    typeof entry.logged_at !== "string" ||
+    entry.action_type !== "INSERT" ||
+    !isRiskLevel(entry.risk_level) ||
+    !isNullableString(entry.model_version) ||
+    !isNullableString(entry.explanation) ||
+    (typeof entry.assessed_by !== "number" && entry.assessed_by !== null)
+  ) return null;
+
+  return {
+    audit_id: entry.audit_id,
+    risk_assessment_id: entry.risk_assessment_id,
+    company_id: entry.company_id,
+    risk_score: score,
+    logged_at: entry.logged_at,
+    action_type: "INSERT",
+    risk_level: entry.risk_level,
+    model_version: entry.model_version,
+    explanation: entry.explanation,
+    assessed_by: entry.assessed_by,
+  };
+}
+
+export function getRiskAuditHistory(
+  token: string,
+  companyId: number,
+  limit = 50,
+  offset = 0,
+): Promise<RiskAuditHistoryResponse[]> {
+  return get(
+    `/api/v1/companies/${encodeURIComponent(companyId)}/risk-audit-history?limit=${limit}&offset=${offset}`,
+    token,
+    (value) => {
+      if (!Array.isArray(value)) return null;
+      const entries = value.map(normalizeRiskAuditEntry);
+      return entries.every((entry) => entry !== null) ? entries : null;
+    },
+  );
+}
