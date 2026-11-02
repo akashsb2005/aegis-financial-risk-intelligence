@@ -142,6 +142,14 @@ The query files are examples. Run `database/seeds/01_demo_data.sql` first to loa
 
 GitHub Actions provisions a disposable PostgreSQL 18 instance, applies the schema, loads the synthetic seed data, executes the analytical query portfolio, runs read-only catalog verification, and executes behavioral integration tests, transaction demonstrations, structural assertions, and a two-session concurrency/isolation demonstration. This is genuine automated database execution evidence; it is not a screenshot of a local database client or proof of an end-to-end web application. See the [PostgreSQL validation workflow](.github/workflows/postgres-validation.yml) and [workflow runs](https://github.com/akashsb2005/aegis-financial-risk-intelligence/actions).
 
+## Application Demonstration Evidence
+
+Genuine screenshots captured from the running AEGIS application during local PostgreSQL/FastAPI/Next.js integration verification:
+
+- [Company Monitoring](https://chatgpt.com/c/docs/evidence/01_company_monitoring.png)
+- [Financial Records](https://chatgpt.com/c/docs/evidence/02_financial_records.png)
+- [Risk Assessments](https://chatgpt.com/c/docs/evidence/03_risk_assessments.png)
+
 ## Current limitations and future work
 
 The project does not currently include a trained ML model or ML inference/model-serving integration, live news or event ingestion, a production pgvector deployment, or production deployment infrastructure. These capabilities are planned and should not be treated as completed. Frontend session tokens are currently held in browser `sessionStorage`, not an HttpOnly cookie; this is a current implementation limitation and is not a claim of production-grade authentication security.
