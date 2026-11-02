@@ -32,7 +32,7 @@ AEGIS is a database-centric financial risk intelligence project built around Pos
 | `docs/database/ER_DESIGN.md` | ER model and relationship documentation |
 | `docs/database/RELATIONAL_SCHEMA.md` | Relations, keys, constraints, indexes, and routines |
 | `docs/database/DATA_DICTIONARY.md` | Attribute-level data dictionary |
-| `docs/database/FUNCTIONAL_DEPENDENCIES.md` | Functional-dependency analysis |
+| `docs/database/FUNCTIONAL_DEPENDENCIES.md` | Functional-dependency analysis |\n| `docs/database/ATTRIBUTE_CLOSURE_ANALYSIS.md` | Step-by-step attribute closures and candidate-key calculations |
 | `docs/database/NORMALIZATION.md` | 1NF, 2NF, 3NF, and BCNF assessment |
 | `docs/database/SYSTEM_ARCHITECTURE.md` | Current implementation boundary and proposed architecture |
 | `docs/api/API_DESIGN.md` | Proposed API contract and integration boundary |
