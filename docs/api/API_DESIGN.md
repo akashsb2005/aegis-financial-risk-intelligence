@@ -1,85 +1,71 @@
-# AEGIS API Design
+# AEGIS API
 
-## 1. Status and scope
+## 1. Implementation status
 
-This document defines a proposed REST API boundary for the AEGIS application. The current tracked repository does not yet contain FastAPI source code; therefore, the endpoints below are a design contract, not a claim of implemented or tested routes.
+The API described here is implemented in the FastAPI application under `backend/app/`. The versioned routes use `/api/v1`; JSON validation and response serialization are provided by Pydantic. Expected application errors use an `error` object containing a stable code and message. FastAPI request-validation failures use its standard `422` response.
 
-## 2. Proposed conventions
+The API connects to the existing PostgreSQL schema. It does not implement ML inference, news/event ingestion, vector retrieval, RAG, or deployment services.
 
-- Base path: `/api/v1`
-- Format: JSON over HTTPS
-- Authentication: secure server-managed session or bearer-token mechanism
-- Authorization: role-based access control
-- Pagination: `limit` and `offset` for collection endpoints
-- Errors: consistent JSON error envelope
-- Database access: parameterized queries through a controlled service/repository layer
+## 2. Authentication and authorization
 
-Example error envelope:
+- Login issues an opaque bearer token for a server-managed session. The database stores a hash of the token, and the frontend keeps the active token in browser `sessionStorage`.
+- Company, financial-record, risk-read, and audit-history routes require a valid authenticated session. These reads are available to any authenticated role.
+- Creating a risk assessment requires the `ANALYST` role. The API assigns the assessor from the authenticated identity rather than trusting the request's `assessed_by` value.
+- Registration assigns new accounts the `ANALYST` role.
+- Password-reset requests return a generic acknowledgement. A reset token may be included only when the configured development environment explicitly enables that behavior.
+
+## 3. Implemented endpoints
+
+All paths below are relative to `/api/v1`.
+
+| Method | Endpoint | Authentication | Behavior |
+|---|---|---|---|
+| POST | `/auth/register` | Public | Register an ANALYST account |
+| POST | `/auth/login` | Public | Validate credentials and create a bearer session |
+| POST | `/auth/logout` | Authenticated | Revoke the current session |
+| POST | `/auth/password-reset/request` | Public | Request reset instructions without disclosing account existence |
+| POST | `/auth/password-reset/confirm` | Public | Consume a valid reset token and change the password |
+| GET | `/health` | Public | Check API process responsiveness |
+| GET | `/health/db` | Public | Check database connectivity |
+| GET | `/companies` | Authenticated | List companies; supports `limit` (default 20, maximum 100) and `offset` (default 0) |
+| GET | `/companies/{company_id}` | Authenticated | Return one company |
+| GET | `/companies/{company_id}/financial-records` | Authenticated | List a company's financial records |
+| GET | `/companies/{company_id}/risk-assessments` | Authenticated | List a company's assessment history |
+| POST | `/companies/{company_id}/risk-assessments` | ANALYST | Create an assessment through the existing PostgreSQL procedure |
+| GET | `/companies/{company_id}/risk-summary` | Authenticated | Return current risk information from the existing database view |
+| GET | `/companies/{company_id}/audit-history` | Authenticated | Return the company's persisted `risk_assessment_audit` records |
+
+Company-scoped reads return `404 COMPANY_NOT_FOUND` when the company does not exist. Existing companies with no financial, risk, or audit rows return an empty array for collection routes. The audit-history response includes the audit ID, source assessment ID, company ID, risk score and level, timestamp, action type, model version, explanation, and assessor ID when present.
+
+## 4. Data and audit flow
+
+Risk-assessment creation is performed by an authenticated ANALYST. The application supplies the authenticated user ID as `assessed_by` and invokes the existing PostgreSQL procedure. The database's `AFTER INSERT` trigger writes the corresponding snapshot to `risk_assessment_audit`. The audit-history endpoint reads those persisted rows; it does not synthesize audit records from the assessment-history response.
+
+Risk assessments remain append-only under the existing database trigger. The API does not change the schema or the database's audit behavior.
+
+## 5. Error and status behavior
+
+- `200 OK`: successful reads and completed operations
+- `201 Created`: account registration and risk-assessment creation
+- `400 Bad Request`: invalid or expired password-reset token
+- `401 Unauthorized`: missing, invalid, expired, or revoked session where authentication is required
+- `403 Forbidden`: authenticated user lacks the required role for assessment creation
+- `404 Not Found`: requested company does not exist
+- `409 Conflict`: account email is already registered
+- `422 Unprocessable Entity`: request validation failure
+- `500 Internal Server Error`: unexpected server failure
+
+Expected application errors use the response shape:
 
 ```json
 {
   "error": {
-    "code": "RESOURCE_NOT_FOUND",
-    "message": "The requested company was not found."
+    "code": "COMPANY_NOT_FOUND",
+    "message": "Company with ID 123 was not found."
   }
 }
 ```
 
-## 3. Proposed endpoints
+## 6. Future work
 
-| Method | Endpoint | Purpose | Database interaction |
-|---|---|---|---|
-| POST | `/auth/register` | Register an account | `users`, `roles` |
-| POST | `/auth/login` | Authenticate user | `users`, `user_sessions` |
-| POST | `/auth/logout` | Revoke current session | `user_sessions` |
-| POST | `/auth/password-reset/request` | Create reset request | `password_reset_tokens` |
-| POST | `/auth/password-reset/confirm` | Consume valid reset token | `password_reset_tokens`, `users` |
-| GET | `/companies` | List companies | `companies` |
-| GET | `/companies/{company_id}` | Company details | `companies` |
-| GET | `/companies/{company_id}/financial-records` | Financial history | `financial_records` |
-| GET | `/companies/{company_id}/risk-assessments` | Risk history | `risk_assessment` |
-| POST | `/companies/{company_id}/risk-assessments` | Create assessment | `add_risk_assessment` / `risk_assessment` |
-| GET | `/companies/{company_id}/risk-summary` | Latest risk summary | `company_risk_view` / risk functions |
-
-## 4. Validation and authorization
-
-- Validate path identifiers and request body types.
-- Enforce score and risk-level constraints using both application validation and database constraints.
-- Confirm that the target company exists before creating an assessment.
-- Restrict administrative operations to authorized roles.
-- Never accept a user ID or role from an untrusted client as proof of identity.
-- Do not expose password hashes, reset-token hashes, or session-token hashes in API responses.
-- Treat risk assessment history as append-only.
-
-## 5. Example risk-assessment request
-
-```json
-{
-  "risk_score": 72.5,
-  "risk_level": "HIGH",
-  "model_version": "baseline-1.0",
-  "explanation": "Illustrative explanation; replace with a validated analysis.",
-  "assessed_by": 1
-}
-```
-
-The authenticated user identity should determine the assessor on the server; the example field is illustrative and should not be trusted directly from a client request.
-
-## 6. Response and status conventions
-
-- `200 OK`: successful read or update
-- `201 Created`: resource created
-- `204 No Content`: successful logout/revocation
-- `400 Bad Request`: malformed input
-- `401 Unauthorized`: missing or invalid authentication
-- `403 Forbidden`: authenticated but not authorized
-- `404 Not Found`: missing resource
-- `409 Conflict`: uniqueness or state conflict
-- `422 Unprocessable Entity`: validation failure
-- `500 Internal Server Error`: unexpected server failure
-
-## 7. Implementation and testing checklist
-
-The future FastAPI implementation should include request/response schemas, dependency-based authentication, role checks, parameterized database access, transaction handling, structured errors, and automated endpoint tests.
-
-No endpoint in this document should be described as operational until its implementation and runtime tests are available in the repository.
+Model inference, live news/event ingestion, production pgvector integration, evidence retrieval/RAG, and production deployment are not implemented API capabilities. They remain future work and are not represented as operational endpoints.

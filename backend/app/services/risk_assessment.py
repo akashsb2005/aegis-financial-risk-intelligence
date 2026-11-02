@@ -22,6 +22,11 @@ class RiskAssessmentService:
         self._companies.get_company(company_id)
         return self._repository.list_for_company(company_id)
 
+    def list_audit_history_for_company(self, company_id: int) -> list[dict[str, Any]]:
+        """Return audit snapshots for an existing company."""
+        self._companies.get_company(company_id)
+        return self._repository.list_audit_history_for_company(company_id)
+
     def create_for_company(
         self,
         company_id: int,

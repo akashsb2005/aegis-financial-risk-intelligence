@@ -4,10 +4,10 @@ AEGIS is a database-centric financial risk intelligence project built around Pos
 
 ## Current implementation status
 
-- **Backend:** FastAPI with PostgreSQL integration, authentication and session handling, role-based access control (RBAC), company, risk-assessment, and financial-record APIs.
-- **Frontend:** Next.js App Router with React, TypeScript, and Tailwind CSS. Account registration, login/logout, a session-protected dashboard, company monitoring, risk-assessment summary/history, and financial-record viewing are integrated with the FastAPI API.
+- **Backend:** FastAPI with PostgreSQL integration, authentication and session handling, role-based access control (RBAC), company, risk-assessment, audit-history, and financial-record APIs.
+- **Frontend:** Next.js App Router with React, TypeScript, and Tailwind CSS. Account registration, login/logout, a session-protected dashboard, company monitoring, risk-assessment summary/history, PostgreSQL audit-history viewing, and financial-record viewing are integrated with the FastAPI API.
 - **Database:** PostgreSQL schema, synthetic demo data, analytical SQL portfolio, and database verification scripts are included.
-- **Verification:** The backend application test suite has passed (**26 passed**), and the current frontend production build has completed successfully. See [verification](#verification-boundary) for the separate database workflow evidence.
+- **Verification:** The backend application test suite has passed (**31 passed**), and the current frontend production build has completed successfully. See [verification](#verification-boundary) for the separate database workflow evidence.
 - **Not completed:** A trained ML model or model-serving/inference integration, live news/event ingestion, production pgvector deployment, and production deployment infrastructure. These remain future work.
 
 ## Repository contents

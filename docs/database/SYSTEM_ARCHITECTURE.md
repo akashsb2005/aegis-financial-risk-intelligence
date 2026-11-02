@@ -1,85 +1,64 @@
 # AEGIS System Architecture
 
-## 1. Purpose
+## 1. Current application architecture
 
-This document distinguishes the database components currently present in the repository from the application and intelligence layers proposed by the project requirements.
-
-## 2. Current implementation boundary
-
-The tracked implementation includes a PostgreSQL schema and SQL portfolio.
-
-### Implemented database components
-
-- Company master data: `companies`
-- Annual financial data: `financial_records`
-- Access-control data: `roles` and `users`
-- Session and password-reset data: `user_sessions` and `password_reset_tokens`
-- Historical risk results: `risk_assessment`
-- Insert audit snapshots: `risk_assessment_audit`
-- SQL routines, a company risk view, and integrity triggers as defined in `database/ddl/01_schema.sql`
-
-### Not present in the tracked source tree at this stage
-
-- FastAPI backend source
-- Next.js frontend source
-- pgvector extension and vector table/index definitions
-- News/event ingestion pipeline
-- Trained ML model and model-serving code
-- Container/deployment configuration
-
-These are proposed project layers, not verified completed components.
-
-## 3. Proposed logical architecture
+The current application uses a Next.js web frontend, a FastAPI backend, and the existing PostgreSQL database:
 
 ```mermaid
 flowchart TD
-    U[Analyst / User] --> UI[Next.js Web Client]
-    UI --> API[FastAPI Application]
+    U[Analyst / User] --> UI[Next.js Frontend]
+    UI -->|JSON API and bearer token| API[FastAPI Backend]
     API --> AUTH[Authentication and RBAC]
     API --> DB[(PostgreSQL)]
-    DB --> CORE[Company, Financial, User and Risk Data]
+    DB --> CORE[Companies and Financial Records]
+    DB --> RISK[Risk Assessments and Risk Summary View]
     DB --> AUDIT[Risk Assessment Audit]
-    API --> ML[Risk Signal / ML Service]
-    API --> RET[Evidence Retrieval Service]
-    RET --> VDB[(Vector Store - proposed)]
-    RET --> SRC[News and Financial Evidence Sources]
-    ML --> DB
-    API --> EXPL[Evidence-grounded Explanation]
-    EXPL --> UI
+    RISK -->|INSERT| TRIGGER[PostgreSQL Audit Trigger]
+    TRIGGER --> AUDIT
+    API -->|Company-scoped API responses| UI
 ```
 
-The diagram represents the intended integration boundary. Only the PostgreSQL relational objects listed in Section 2 are currently represented by tracked implementation files.
+The frontend is in `frontend/`; the backend application, API routes, schemas, services, repositories, and database session handling are in `backend/app/`. PostgreSQL objects are defined in `database/ddl/01_schema.sql`. The application reflects the existing tables rather than defining a competing schema.
 
-## 4. Data flow (proposed)
+## 2. Authentication and authorization flow
 
-1. An authorized user selects a company.
-2. The API reads company and financial records from PostgreSQL.
-3. A risk-analysis component computes or retrieves a risk signal.
-4. The API stores a new risk assessment; historical rows are preserved.
-5. The database trigger writes an audit snapshot.
-6. An evidence-retrieval component may retrieve supporting documents when that component is implemented.
-7. The application presents the result and supporting evidence to the user.
+1. The frontend submits registration or login requests to the FastAPI authentication routes.
+2. Registration creates an ANALYST account. Login verifies credentials and creates a server-managed session whose opaque bearer token is stored in hashed form in `user_sessions`.
+3. The frontend retains its active bearer token in browser `sessionStorage` and includes it on authenticated API requests.
+4. FastAPI resolves the token against an active, unexpired database session and derives the user and role from PostgreSQL.
+5. Company, financial-record, risk-read, and audit-history routes require authentication. Risk-assessment creation additionally requires the ANALYST role; the API takes the assessor ID from the authenticated identity.
 
-## 5. Database integrity and history
+## 3. Risk-assessment and audit flow
 
-The schema separates master data, annual financial records, user identity, access roles, sessions, reset tokens, risk assessments, and audit snapshots. Foreign keys and check/unique constraints enforce the rules explicitly defined in the DDL.
+1. An authenticated ANALYST selects a company and submits a risk assessment through the frontend.
+2. FastAPI validates the request, checks that the company exists, sets the assessor to the authenticated user, and calls the existing PostgreSQL assessment procedure.
+3. PostgreSQL inserts the append-only row into `risk_assessment`.
+4. The existing `AFTER INSERT` trigger invokes `public.log_risk_assessment()` and copies the inserted assessment fields to `risk_assessment_audit`.
+5. The frontend retrieves assessment history and risk summary through the existing API routes. It retrieves application audit history separately from `GET /api/v1/companies/{company_id}/audit-history`, which reads the persisted audit rows for that company.
 
-Risk assessments are append-only through the included modification-prevention trigger. A new assessment should be inserted when a new result is produced rather than overwriting a historical result.
+Financial records are read from the existing PostgreSQL table through the company-scoped financial-record route. Company monitoring uses the authenticated company list/detail routes.
 
-The audit table receives an INSERT snapshot through a trigger. Its copied identifiers are not foreign-key-enforced in the current DDL.
+## 4. Implemented and unimplemented boundaries
 
-## 6. Security considerations
+### Implemented
 
-- Store password hashes, never plaintext passwords.
-- Keep database credentials outside source control.
-- Use least-privilege database roles.
-- Validate and authorize every API operation.
-- Hash session/reset tokens before storage.
-- Enforce expiry and revocation checks in the application.
-- Avoid exposing internal error details or secrets to clients.
+- Next.js frontend and FastAPI backend integration
+- PostgreSQL-backed authentication, sessions, and role-based access control
+- Company monitoring and financial-record reads
+- Risk assessment creation, history, and summary
+- Trigger-generated PostgreSQL audit snapshots and authenticated application-level audit-history reads
 
-These are design requirements; application-level enforcement must be verified in backend code before it can be claimed as implemented.
+### Not implemented
 
-## 7. Verification status
+- Trained ML model or model inference/service integration
+- Live news or financial-event ingestion
+- Production pgvector deployment, embeddings, or RAG
+- Cloud hosting, containerization, or production deployment infrastructure
 
-The architecture description is based on the tracked schema and project requirements. Live service connectivity, UI behavior, model execution, vector retrieval, and end-to-end workflows require runtime verification.
+The optional SQL in `database/vector/01_pgvector_evidence.sql` is not an implemented application retrieval service. The proposed capabilities above must not be interpreted as current runtime components.
+
+## 5. Database integrity and verification
+
+The PostgreSQL schema defines company and financial data, user and role data, sessions and reset tokens, risk assessments, and audit snapshots. Database constraints and triggers enforce the rules represented in the tracked DDL. Risk assessments are append-only, and the audit table is populated by the database trigger rather than by a separate application-generated history.
+
+Backend API tests use a separate disposable PostgreSQL test database. Database verification scripts and the PostgreSQL validation workflow cover schema and database behavior independently of application-level API verification.

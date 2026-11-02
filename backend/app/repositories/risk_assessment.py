@@ -22,6 +22,17 @@ def _risk_assessments_table() -> Table:
 
 
 @lru_cache(maxsize=1)
+def _risk_assessment_audit_table() -> Table:
+    """Reflect the existing risk_assessment_audit table."""
+    return Table(
+        "risk_assessment_audit",
+        MetaData(),
+        schema="public",
+        autoload_with=engine,
+    )
+
+
+@lru_cache(maxsize=1)
 def _company_risk_view() -> Table:
     """Reflect the existing company_risk_view."""
     return Table(
@@ -38,6 +49,7 @@ class RiskAssessmentRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
         self._assessments = _risk_assessments_table()
+        self._audit = _risk_assessment_audit_table()
         self._risk_view = _company_risk_view()
 
     def list_for_company(self, company_id: int) -> list[dict[str, Any]]:
@@ -48,6 +60,19 @@ class RiskAssessmentRepository:
             .order_by(
                 self._assessments.c.assessed_at.desc(),
                 self._assessments.c.risk_assessment_id.desc(),
+            )
+        )
+        rows = self._session.execute(statement).mappings().all()
+        return [dict(row) for row in rows]
+
+    def list_audit_history_for_company(self, company_id: int) -> list[dict[str, Any]]:
+        """Return persisted audit snapshots newest first."""
+        statement = (
+            select(self._audit)
+            .where(self._audit.c.company_id == company_id)
+            .order_by(
+                self._audit.c.logged_at.desc(),
+                self._audit.c.audit_id.desc(),
             )
         )
         rows = self._session.execute(statement).mappings().all()

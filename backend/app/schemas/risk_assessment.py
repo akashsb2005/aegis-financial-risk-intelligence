@@ -37,6 +37,21 @@ class RiskAssessmentResponse(BaseModel):
     assessed_by: int | None
 
 
+class RiskAssessmentAuditResponse(BaseModel):
+    """Public representation of a persisted risk-assessment audit snapshot."""
+
+    audit_id: int
+    risk_assessment_id: int
+    company_id: int
+    risk_score: Decimal
+    logged_at: datetime
+    action_type: Literal["INSERT"]
+    risk_level: RiskLevel
+    model_version: str | None
+    explanation: str | None
+    assessed_by: int | None
+
+
 class RiskSummaryResponse(BaseModel):
     """Current risk details for a company, if an assessment exists."""
 
