@@ -30,26 +30,23 @@ def list_company_predictions(
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Company not found.")
 
-    rows = db.execute(
-        text(
-            """
-            SELECT p.prediction_id, p.security_id, s.ticker, s.exchange,
-                   p.prediction_type, p.prediction_date, p.target_date,
-                   p.predicted_value, p.signal, p.model_name, p.model_version,
-                   p.metrics, p.features, p.created_at
-            FROM public.model_predictions p
-            JOIN public.securities s ON s.security_id = p.security_id
-            WHERE s.company_id = :company_id
-              AND (:prediction_type IS NULL OR p.prediction_type = :prediction_type)
-            ORDER BY p.prediction_date DESC, p.prediction_id DESC
-            LIMIT :limit OFFSET :offset
-            """
-        ),
-        {
-            "company_id": company_id,
-            "prediction_type": prediction_type,
-            "limit": limit,
-            "offset": offset,
-        },
-    ).mappings().all()
+    query = """
+        SELECT p.prediction_id, p.security_id, s.ticker, s.exchange,
+               p.prediction_type, p.prediction_date, p.target_date,
+               p.predicted_value, p.signal, p.model_name, p.model_version,
+               p.metrics, p.features, p.created_at
+        FROM public.model_predictions p
+        JOIN public.securities s ON s.security_id = p.security_id
+        WHERE s.company_id = :company_id
+    """
+    parameters: dict[str, Any] = {
+        "company_id": company_id,
+        "limit": limit,
+        "offset": offset,
+    }
+    if prediction_type is not None:
+        query += " AND p.prediction_type = :prediction_type"
+        parameters["prediction_type"] = prediction_type
+    query += " ORDER BY p.prediction_date DESC, p.prediction_id DESC LIMIT :limit OFFSET :offset"
+    rows = db.execute(text(query), parameters).mappings().all()
     return [dict(row) for row in rows]
