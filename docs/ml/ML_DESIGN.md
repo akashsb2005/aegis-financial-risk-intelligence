@@ -2,7 +2,7 @@
 
 ## 1. Status
 
-This document describes a proposed machine-learning workflow. The tracked repository currently contains database structures for storing risk assessments, but it does not contain a trained model, feature-engineering pipeline, model-serving endpoint, or model evaluation results. No predictive performance is claimed.
+The repository now includes reproducible training code for an Isolation Forest anomaly detector and a Random Forest five-session forward-volatility regressor. See [Implemented Models](IMPLEMENTED_MODELS.md). Training and measured evaluation still require sufficient real market observations; no performance is claimed until the pipeline has been run against an adequately populated database.
 
 ## 2. Objective
 
@@ -59,6 +59,6 @@ The model service should validate outputs before insertion. Store enough provena
 - Protect confidential financial and personal data.
 - Keep a human decision-maker in the loop.
 
-## 9. Completion criteria
+## 9. Current implementation status\n\nThe current code implements market-data feature engineering, chronological evaluation, an unsupervised Isolation Forest signal, a forward-volatility Random Forest, artifact/metrics output, and persistence into `model_predictions`. Automated tests cover feature construction and the forward-target boundary. Live model metrics and database persistence still require a local database containing sufficient real market history.\n\n## 10. Completion criteria
 
 The ML component is complete only when source code, reproducible training/evaluation steps, a documented dataset, measured results, model versioning, and a tested database integration are committed. Until then, this file remains a design document.
