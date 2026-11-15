@@ -1,3 +1,11 @@
+import sys
+from pathlib import Path
+
+# Keep repository-root imports stable when pytest chooses a nested config root.
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -20,6 +28,7 @@ def test_feature_engineering_has_expected_features_and_future_target():
     assert set(FEATURES).issubset(result.columns)
     assert result["target_forward_volatility_5d"].notna().sum() > 0
     assert result["volatility_20d"].notna().sum() > 0
+    assert result["volume_zscore"].notna().sum() > 0
 
 
 def test_forward_target_is_missing_at_end_of_series():
