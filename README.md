@@ -8,7 +8,7 @@ AEGIS is a database-centric financial risk intelligence project built around Pos
 - **Frontend:** Next.js App Router with React, TypeScript, and Tailwind CSS. Account registration, login/logout, a session-protected dashboard, company monitoring, risk-assessment summary/history, PostgreSQL audit-history viewing, and financial-record viewing are integrated with the FastAPI API.
 - **Database:** PostgreSQL core schema plus a separate market/evidence migration for securities, OHLCV observations, financial events, news articles, and model-prediction storage. Repeatable public-security identifiers and schema assertions are included.
 - **Verification:** The backend application test suite passed (**36 passed**) and the frontend production build completed successfully during merge verification. See [verification](#verification-boundary) for the separate PostgreSQL workflow evidence.
-- **In progress:** The repository includes a historical Yahoo Finance OHLCV ingestion adapter and additive market/evidence schema; these require their own validation. Two trained/evaluated ML models, automated financial event/news ingestion, full pgvector embedding and semantic-retrieval integration, and evidence-grounded AI explanations remain outstanding. Docker, cloud hosting, and production deployment are outside the agreed project scope.
+- **ML:** Reproducible Isolation Forest anomaly detection and Random Forest five-session forward-volatility training code are implemented, with chronological evaluation and prediction persistence. Actual performance metrics still require training on sufficient real market observations.\n- **Evidence (in progress):** RSS/Atom ingestion and local 384-dimensional Sentence Transformers/pgvector embedding and retrieval scripts are implemented on PR #24. They require an operator-supplied permitted feed and a PostgreSQL server with pgvector installed. Keyword-classified events are review candidates, not verified facts.\n- **Still outstanding:** Integrate prediction and evidence retrieval APIs with the dashboard, verify real-data model training, and complete end-to-end application tests. Docker, cloud hosting, and production deployment are outside the agreed project scope.
 
 ## Repository contents
 
@@ -20,7 +20,7 @@ AEGIS is a database-centric financial risk intelligence project built around Pos
 | `database/ddl/02_market_evidence.sql` | Additive securities, OHLCV market observations, events, news, and model-prediction migration |
 | `database/seeds/02_public_securities.sql` | Public company/security identifiers (no fabricated price history) |
 | `database/verification/06_market_evidence_assertions.sql` | Fail-fast assertions for the market/evidence schema |
-| `data_pipeline/` | Historical market-data ingestion adapter and setup instructions |
+| `data_pipeline/` | Historical market-data and RSS ingestion adapters, local embedding pipeline and setup instructions |\n| `data_pipeline/embed_evidence.py` | Local 384-dimensional embedding and pgvector similarity retrieval |\n| `docs/ml/NEWS_AND_SEMANTIC_RETRIEVAL.md` | RSS ingestion and local semantic retrieval guide |
 | `docs/database/MARKET_EVIDENCE_DATA_MODEL.md` | Market/evidence data model and migration order |
 | `database/queries/01_basic_queries.sql` | Filtering, sorting, NULL handling, and basic aggregation |
 | `database/queries/02_joins_and_aggregations.sql` | Joins, grouping, aggregate functions, and HAVING |
