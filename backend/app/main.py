@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.api import router as api_router
+from app.api.intelligence import router as intelligence_router
 from app.core.config import get_settings
 from app.core.errors import APIError
 
@@ -31,6 +32,7 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     application.include_router(api_router, prefix=settings.api_v1_prefix)
+    application.include_router(intelligence_router, prefix=settings.api_v1_prefix)
     return application
 
 
