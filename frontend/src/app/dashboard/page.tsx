@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import AppSidebar from "@/components/app-sidebar";
+import ModelPredictionsSection from "@/components/model-predictions-section";
 import {
   clearSessionToken,
   getSessionToken,
@@ -387,6 +388,7 @@ export default function DashboardPage() {
                 state={auditHistoryState}
               />
               <FinancialRecordsSection state={financialRecordsState} />
+              <ModelPredictionsSection companyId={Number(selectedCompanyId)} />
             </>
           )}
         </div>
