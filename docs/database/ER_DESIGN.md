@@ -167,3 +167,7 @@ This trigger flow is not a declared foreign-key relationship.
 ## 8. Conclusion
 
 The ER model separates company master data, annual financial facts, identity and access management, risk assessments and audit snapshots. Declared foreign keys implement the principal one-to-many relationships, while constraints and triggers enforce key business rules. This ER model is the foundation for the AEGIS relational schema and SQL implementation.
+
+## Chen Notation ER Diagram
+
+![AEGIS Chen Notation ER Diagram](diagrams/AEGIS_ER_Diagram.png)
