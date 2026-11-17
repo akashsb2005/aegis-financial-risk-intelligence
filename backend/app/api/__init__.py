@@ -1,8 +1,9 @@
 """Versioned API route definitions."""
 
+from datetime import date
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -21,6 +22,12 @@ from app.schemas.auth import (
 )
 from app.schemas.company import CompanyResponse
 from app.schemas.financial_record import FinancialRecordResponse
+from app.schemas.market_data import (
+    FinancialEventResponse,
+    MarketObservationResponse,
+    NewsArticleResponse,
+    SecurityResponse,
+)
 from app.schemas.risk_assessment_audit import RiskAssessmentAuditResponse
 from app.schemas.risk_assessment import (
     RiskAssessmentCreate,
@@ -30,9 +37,18 @@ from app.schemas.risk_assessment import (
 from app.services.auth import AuthService
 from app.services.company import CompanyNotFoundError, CompanyService
 from app.services.financial_record import FinancialRecordService
+from app.services.market_data import MarketDataService
 from app.services.risk_assessment import RiskAssessmentService
 
 router = APIRouter()
+
+
+def _validate_date_range(start_date: date | None, end_date: date | None) -> None:
+    if start_date is not None and end_date is not None and start_date > end_date:
+        raise HTTPException(
+            status_code=422,
+            detail="start_date must be on or before end_date.",
+        )
 
 
 @router.post("/auth/register", response_model=RegisterResponse, status_code=201, tags=["auth"])
@@ -284,6 +300,154 @@ def list_company_risk_audit_history(
     try:
         return RiskAssessmentService(db).list_audit_for_company(
             company_id, limit=limit, offset=offset
+        )
+    except CompanyNotFoundError:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "COMPANY_NOT_FOUND",
+                    "message": f"Company with ID {company_id} was not found.",
+                }
+            },
+        )
+
+
+@router.get(
+    "/companies/{company_id}/securities",
+    response_model=list[SecurityResponse],
+    responses={404: {"description": "Company not found"}},
+    tags=["market-data"],
+)
+def list_company_securities(
+    company_id: Annotated[int, Path(gt=0)],
+    active_only: bool = True,
+    limit: Annotated[int, Query(ge=1, le=100)] = 100,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    _user: AuthenticatedUser = Depends(require_authenticated_user),
+    db: Session = Depends(get_db),
+) -> list[dict[str, Any]] | JSONResponse:
+    """List securities associated with an existing company."""
+    try:
+        return MarketDataService(db).get_company_securities(
+            company_id, active_only=active_only, limit=limit, offset=offset
+        )
+    except CompanyNotFoundError:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "COMPANY_NOT_FOUND",
+                    "message": f"Company with ID {company_id} was not found.",
+                }
+            },
+        )
+
+
+@router.get(
+    "/companies/{company_id}/market-observations",
+    response_model=list[MarketObservationResponse],
+    responses={404: {"description": "Company or company security not found"}},
+    tags=["market-data"],
+)
+def list_company_market_observations(
+    company_id: Annotated[int, Path(gt=0)],
+    security_id: Annotated[int | None, Query(gt=0)] = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    _user: AuthenticatedUser = Depends(require_authenticated_user),
+    db: Session = Depends(get_db),
+) -> list[dict[str, Any]] | JSONResponse:
+    """List company-scoped market observations."""
+    _validate_date_range(start_date, end_date)
+    try:
+        return MarketDataService(db).get_company_market_observations(
+            company_id,
+            security_id=security_id,
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit,
+            offset=offset,
+        )
+    except CompanyNotFoundError:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "COMPANY_NOT_FOUND",
+                    "message": f"Company with ID {company_id} was not found.",
+                }
+            },
+        )
+
+
+@router.get(
+    "/companies/{company_id}/events",
+    response_model=list[FinancialEventResponse],
+    responses={404: {"description": "Company not found"}},
+    tags=["market-data"],
+)
+def list_company_events(
+    company_id: Annotated[int, Path(gt=0)],
+    event_type: Annotated[str | None, Query(max_length=60)] = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    _user: AuthenticatedUser = Depends(require_authenticated_user),
+    db: Session = Depends(get_db),
+) -> list[dict[str, Any]] | JSONResponse:
+    """List company-scoped financial events."""
+    _validate_date_range(start_date, end_date)
+    try:
+        return MarketDataService(db).get_company_events(
+            company_id,
+            event_type=event_type,
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit,
+            offset=offset,
+        )
+    except CompanyNotFoundError:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "COMPANY_NOT_FOUND",
+                    "message": f"Company with ID {company_id} was not found.",
+                }
+            },
+        )
+
+
+@router.get(
+    "/companies/{company_id}/news",
+    response_model=list[NewsArticleResponse],
+    responses={404: {"description": "Company or company security not found"}},
+    tags=["market-data"],
+)
+def list_company_news(
+    company_id: Annotated[int, Path(gt=0)],
+    security_id: Annotated[int | None, Query(gt=0)] = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    _user: AuthenticatedUser = Depends(require_authenticated_user),
+    db: Session = Depends(get_db),
+) -> list[dict[str, Any]] | JSONResponse:
+    """List company-scoped direct or security-associated news articles."""
+    _validate_date_range(start_date, end_date)
+    try:
+        return MarketDataService(db).get_company_news(
+            company_id,
+            security_id=security_id,
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit,
+            offset=offset,
         )
     except CompanyNotFoundError:
         return JSONResponse(

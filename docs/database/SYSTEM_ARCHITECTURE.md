@@ -23,6 +23,8 @@ flowchart TD
     DB --> MARKET[Additive market/evidence schema]
     WEB --> DASH[Company, financial and risk dashboard]
     API --> DASH
+    MARKET -->|company-scoped read queries| SERVICES
+    API -->|market read responses; UI integration pending| WEB
 ```
 
 The frontend is in `frontend/`; the backend routes, schemas, services, repositories, and database session handling are in `backend/app/`. The core database DDL is `database/ddl/01_schema.sql`; market/evidence objects are a separate additive migration at `database/ddl/02_market_evidence.sql`. The application accesses PostgreSQL through the backend and does not define a competing schema.
@@ -40,6 +42,7 @@ The frontend is in `frontend/`; the backend routes, schemas, services, repositor
 - Authentication, server-managed sessions, and role-aware dependencies.
 - Company and financial-record reads.
 - Risk summary, assessment history, assessment creation, and audit-history reads.
+- Read-only security, market-observation, financial-event, and news-article APIs, scoped to the requested company.
 - Pydantic schemas and service/repository separation.
 
 **PostgreSQL**
@@ -47,6 +50,8 @@ The frontend is in `frontend/`; the backend routes, schemas, services, repositor
 - Risk assessments, append-only protection, and trigger-generated audit snapshots.
 - Company risk view, routines, constraints, and indexes.
 - The separate market/evidence migration adds securities, market observations, events, news articles, and model-prediction storage. Its presence does not imply live news ingestion or ML inference.
+
+The market/evidence tables are exposed through authenticated, company-scoped FastAPI read routes. The Next.js dashboard has not yet been integrated with these market APIs; market/evidence UI work is a separate application step.
 
 ## 3. Authentication and authorization flow
 
